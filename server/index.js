@@ -31,6 +31,10 @@ app.use('/api/register', registerRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/admin', adminRouter)
 
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, message: 'API endpoint not found' })
+})
+
 if (isProd) {
   const distPath = path.join(__dirname, '..', 'dist')
   app.use(express.static(distPath))
