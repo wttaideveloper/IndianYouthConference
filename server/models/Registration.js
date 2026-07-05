@@ -49,6 +49,8 @@ const registrationSchema = new mongoose.Schema(
     },
     adminNotes: { type: String, default: '' },
     emailSent: { type: Boolean, default: false },
+    verificationEmailSent: { type: Boolean, default: false },
+    rejectionEmailSent: { type: Boolean, default: false },
   },
   { timestamps: true },
 )

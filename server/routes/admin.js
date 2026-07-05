@@ -9,6 +9,7 @@ import {
   buildRegistrationUpdate,
   calculateFee,
 } from '../lib/registrationHelpers.js'
+import { sendUserVerifiedEmail, sendUserRejectedEmail } from '../mailer.js'
 
 const router = Router()
 
@@ -280,13 +281,51 @@ router.patch('/registrations/:id', async (req, res) => {
     updates.feeLabel = label
   }
 
+  const previousStatus = existing.status
+
   const item = await Registration.findByIdAndUpdate(
     req.params.id,
     { $set: updates },
     { new: true, runValidators: true },
   ).select('-paymentScreenshot.path')
 
-  res.json({ success: true, item })
+  const emailWarnings = []
+
+  if (updates.status === 'verified' && previousStatus !== 'verified' && !item.verificationEmailSent) {
+    try {
+      await sendUserVerifiedEmail(item.toObject())
+      await Registration.findByIdAndUpdate(item._id, {
+        verificationEmailSent: true,
+        rejectionEmailSent: false,
+      })
+      item.verificationEmailSent = true
+      item.rejectionEmailSent = false
+    } catch (emailErr) {
+      console.error('Verification email failed:', emailErr.message)
+      emailWarnings.push('Registration updated, but verification email could not be sent.')
+    }
+  }
+
+  if (updates.status === 'rejected' && previousStatus !== 'rejected' && !item.rejectionEmailSent) {
+    try {
+      await sendUserRejectedEmail(item.toObject())
+      await Registration.findByIdAndUpdate(item._id, {
+        rejectionEmailSent: true,
+        verificationEmailSent: false,
+      })
+      item.rejectionEmailSent = true
+      item.verificationEmailSent = false
+    } catch (emailErr) {
+      console.error('Rejection email failed:', emailErr.message)
+      emailWarnings.push('Registration updated, but rejection email could not be sent.')
+    }
+  }
+
+  res.json({
+    success: true,
+    item,
+    ...(emailWarnings.length > 0 && { warning: emailWarnings.join(' ') }),
+  })
 })
 
 router.delete('/registrations/:id', async (req, res) => {

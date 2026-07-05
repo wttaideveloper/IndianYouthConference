@@ -141,6 +141,9 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
       setIsEditing(false)
       onUpdated()
       onClose()
+      if (data.warning) {
+        window.alert(data.warning)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed')
     } finally {

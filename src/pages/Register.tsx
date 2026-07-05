@@ -64,7 +64,7 @@ export default function Register() {
               >
                 {[
                   { icon: Calendar, text: 'Arrival & departure dates required' },
-                  { icon: Mail, text: 'Confirmation email after submit' },
+                  { icon: Mail, text: 'Confirmation email after admin verifies payment' },
                   { icon: Shield, text: 'QR payment + screenshot upload' },
                   { icon: Zap, text: 'Payment verified within 48hrs' },
                 ].map(({ icon: Icon, text }) => (

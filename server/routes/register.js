@@ -3,7 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import { sendRegistrationEmails } from '../mailer.js'
+import { sendAdminRegistrationNotification } from '../mailer.js'
 import Registration from '../models/Registration.js'
 import { isDBConnected } from '../db.js'
 
@@ -163,18 +163,18 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
 
     let emailSent = false
     try {
-      await sendRegistrationEmails(data)
+      await sendAdminRegistrationNotification(data)
       emailSent = true
       await Registration.findByIdAndUpdate(saved._id, { emailSent: true })
     } catch (emailErr) {
-      console.error('Email error (registration saved):', emailErr.message)
+      console.error('Admin notification email failed (registration saved):', emailErr.message)
     }
 
     res.json({
       success: true,
       message: emailSent
-        ? 'Registration submitted successfully. A confirmation email has been sent.'
-        : 'Registration submitted successfully. We will contact you shortly.',
+        ? 'Registration submitted successfully. You will receive a confirmation email once your payment is verified by our team.'
+        : 'Registration submitted successfully. Our team will review your payment and contact you shortly.',
       id: saved._id,
     })
   } catch (err) {

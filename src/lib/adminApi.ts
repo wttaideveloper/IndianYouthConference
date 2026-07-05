@@ -90,6 +90,8 @@ export interface Registration {
   status: 'pending' | 'verified' | 'rejected'
   adminNotes?: string
   emailSent?: boolean
+  verificationEmailSent?: boolean
+  rejectionEmailSent?: boolean
   createdAt: string
   paymentScreenshot?: {
     filename?: string
