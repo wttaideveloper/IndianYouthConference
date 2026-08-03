@@ -149,6 +149,7 @@ export default function RegisterForm() {
 
   const resetForm = () => {
     setForm(INITIAL)
+    setPaymentOption('pay_now')
     setScreenshot(null)
     if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
     setScreenshotPreview(null)
@@ -225,6 +226,7 @@ export default function RegisterForm() {
       setScreenshot(null)
       setScreenshotPreview(null)
       setForm(INITIAL)
+      setPaymentOption('pay_now')
       setStatus('success')
       setMessage(data.message)
     } catch {

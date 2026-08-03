@@ -243,14 +243,14 @@ router.patch('/registrations/:id', async (req, res) => {
     return res.status(404).json({ success: false, message: 'Registration not found' })
   }
 
-  if (['verified', 'rejected'].includes(req.body.status)) {
+  if (req.body.status === 'verified') {
     const hasScreenshot = Boolean(
       existing.paymentScreenshot?.path && fs.existsSync(existing.paymentScreenshot.path),
     )
     if (!hasScreenshot) {
       return res.status(400).json({
         success: false,
-        errors: ['Cannot verify or reject — no payment screenshot exists for this registration.'],
+        errors: ['Cannot verify because no payment screenshot exists for this registration.'],
       })
     }
   }

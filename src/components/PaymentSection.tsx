@@ -70,6 +70,7 @@ export default function PaymentSection({
         ))}
       </div>
 
+      {paymentOption === 'pay_now' && (
       <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/15 p-5">
         <div className="flex items-start gap-2 mb-4 p-3 rounded-xl bg-white/80 border border-primary/10">
           <Info size={16} className="text-primary shrink-0 mt-0.5" />
@@ -126,6 +127,7 @@ export default function PaymentSection({
           </div>
         </div>
       </div>
+      )}
 
       {paymentOption === 'pay_later' ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-5 text-center">

@@ -376,14 +376,14 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Status</p>
                     <div className="grid grid-cols-3 gap-2">
                       {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => {
-                        const locked = !hasScreenshot && value !== 'pending'
+                        const locked = !hasScreenshot && value === 'verified'
                         return (
                           <button
                             key={value}
                             type="button"
                             onClick={() => updateForm('status', value)}
                             disabled={locked}
-                            title={locked ? 'Cannot verify or reject until a payment screenshot is uploaded' : label}
+                            title={locked ? 'Cannot verify until a payment screenshot is uploaded' : label}
                             className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
                               locked
                                 ? 'opacity-40 cursor-not-allowed'
@@ -401,7 +401,7 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     {!hasScreenshot && (
                       <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
                         <AlertTriangle size={13} className="shrink-0" />
-                        Cannot verify or reject until a payment screenshot is uploaded.
+                        Cannot verify until a payment screenshot is uploaded.
                       </p>
                     )}
                     <Field label="Admin Notes">
@@ -480,14 +480,14 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Status</p>
                     <div className="grid grid-cols-3 gap-2">
                       {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => {
-                        const locked = !hasScreenshot && value !== 'pending'
+                        const locked = !hasScreenshot && value === 'verified'
                         return (
                           <button
                             key={value}
                             type="button"
                             onClick={() => updateForm('status', value)}
                             disabled={locked}
-                            title={locked ? 'Cannot verify or reject until a payment screenshot is uploaded' : label}
+                            title={locked ? 'Cannot verify until a payment screenshot is uploaded' : label}
                             className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
                               locked
                                 ? 'opacity-40 cursor-not-allowed'
@@ -505,7 +505,7 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     {!hasScreenshot && (
                       <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
                         <AlertTriangle size={13} className="shrink-0" />
-                        Cannot verify or reject until a payment screenshot is uploaded.
+                        Cannot verify until a payment screenshot is uploaded.
                       </p>
                     )}
                     <Field label="Admin Notes">

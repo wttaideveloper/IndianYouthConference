@@ -93,55 +93,59 @@ function validateBody(body) {
 }
 
 router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
-  try{
-  const paymentOption = req.body.paymentOption === 'pay_later' ? 'pay_later' : 'pay_now'
+  try {
+    const registrationBody = {
+      ...req.body,
+      paymentOption: req.body.paymentOption || 'pay_now',
+    }
+    const paymentOption = registrationBody.paymentOption
 
-  if (paymentOption === 'pay_now' && !req.file) {
-    return res.status(400).json({
-      success: false,
-      errors: ['Payment screenshot is required. Please attach your payment proof.'],
-    })
-  }
-  if (paymentOption === 'pay_later' && req.file) {
-    fs.unlink(req.file.path, () => {})
-    return res.status(400).json({
-      success: false,
-      errors: ['Pay Later does not require a payment screenshot. Please clear it and resubmit.'],
-    })
-  }
+    if (paymentOption === 'pay_now' && !req.file) {
+      return res.status(400).json({
+        success: false,
+        errors: ['Payment screenshot is required. Please attach your payment proof.'],
+      })
+    }
+    if (paymentOption === 'pay_later' && req.file) {
+      fs.unlink(req.file.path, () => {})
+      return res.status(400).json({
+        success: false,
+        errors: ['Pay Later does not require a payment screenshot. Please clear it and resubmit.'],
+      })
+    }
 
-  const errors = validateBody(req.body)
-  if (errors.length > 0) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {})
-    return res.status(400).json({ success: false, errors })
-  }
+    const errors = validateBody(registrationBody)
+    if (errors.length > 0) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {})
+      return res.status(400).json({ success: false, errors })
+    }
 
     const { fee, label: feeLabel } = calculateFee(
-      req.body.occupation,
-      req.body.programPreference || '',
+      registrationBody.occupation,
+      registrationBody.programPreference || '',
     )
 
     const data = {
-      firstName: req.body.firstName.trim(),
-      lastName: req.body.lastName.trim(),
-      fullName: `${req.body.firstName.trim()} ${req.body.lastName.trim()}`,
-      gender: req.body.gender,
-      phone: req.body.phone.trim(),
-      email: req.body.email.trim().toLowerCase(),
-      streetAddress: req.body.streetAddress.trim(),
-      streetAddress2: req.body.streetAddress2?.trim() || '',
-      city: req.body.city.trim(),
-      state: req.body.state.trim(),
-      postalCode: req.body.postalCode.trim(),
-      sectionConference: req.body.sectionConference.trim(),
-      occupation: req.body.occupation,
-      arrivalDate: req.body.arrivalDate,
-      departureDate: req.body.departureDate,
-      programPreference: req.body.programPreference || 'All the Days',
-      howDidYouKnow: req.body.howDidYouKnow,
-      pastAttendance: req.body.pastAttendance,
-      emergencyContactName: req.body.emergencyContactName.trim(),
-      emergencyContactNumber: req.body.emergencyContactNumber.trim(),
+      firstName: registrationBody.firstName.trim(),
+      lastName: registrationBody.lastName.trim(),
+      fullName: `${registrationBody.firstName.trim()} ${registrationBody.lastName.trim()}`,
+      gender: registrationBody.gender,
+      phone: registrationBody.phone.trim(),
+      email: registrationBody.email.trim().toLowerCase(),
+      streetAddress: registrationBody.streetAddress.trim(),
+      streetAddress2: registrationBody.streetAddress2?.trim() || '',
+      city: registrationBody.city.trim(),
+      state: registrationBody.state.trim(),
+      postalCode: registrationBody.postalCode.trim(),
+      sectionConference: registrationBody.sectionConference.trim(),
+      occupation: registrationBody.occupation,
+      arrivalDate: registrationBody.arrivalDate,
+      departureDate: registrationBody.departureDate,
+      programPreference: registrationBody.programPreference || 'All the Days',
+      howDidYouKnow: registrationBody.howDidYouKnow,
+      pastAttendance: registrationBody.pastAttendance,
+      emergencyContactName: registrationBody.emergencyContactName.trim(),
+      emergencyContactNumber: registrationBody.emergencyContactNumber.trim(),
       fee,
       feeLabel,
       paymentOption,
