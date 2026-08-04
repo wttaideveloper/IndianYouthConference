@@ -11,12 +11,13 @@ import { requireAttendee, setAttendeeSessionCookie } from '../middleware/attende
 import {
   generateOtp,
   generatePaymentProofFilename,
+  generatePaymentProofTemporaryFilename,
   generateSessionToken,
   hmacValue,
   verifyHash,
 } from '../lib/crypto.js'
 import { paymentState, canUploadPaymentProof } from '../lib/paymentState.js'
-import { rateLimitHit } from '../lib/rateLimit.js'
+import { enforceCooldown, hitRateLimit } from '../lib/rateLimit.js'
 import { sendOtpEmail, sendAdminPaymentProofNotification } from '../mailer.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -25,9 +26,9 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
+  filename: (_req, _file, cb) => {
     try {
-      cb(null, generatePaymentProofFilename(file.mimetype))
+      cb(null, generatePaymentProofTemporaryFilename())
     } catch (err) {
       cb(err)
     }
@@ -49,6 +50,8 @@ const router = Router()
 const OTP_TTL_MS = 10 * 60 * 1000
 const OTP_MAX_ATTEMPTS = 5
 const SESSION_TTL_MS = 20 * 60 * 1000
+const OTP_RATE_WINDOW_MS = 60 * 60 * 1000
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000
 const OTP_PEPPER = process.env.REGISTRATION_ACCESS_OTP_PEPPER
 const TOKEN_PEPPER = process.env.REGISTRATION_ACCESS_TOKEN_PEPPER
 const GENERIC_OTP_ERROR = 'The verification code is invalid or expired.'
@@ -72,6 +75,11 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+function normalizeIp(value) {
+  const ip = String(value || '').trim().toLowerCase()
+  return ip.startsWith('::ffff:') ? ip.slice(7) : ip || 'unknown'
+}
+
 async function removeUploadedFile(file) {
   if (!file?.path) return
 
@@ -81,6 +89,43 @@ async function removeUploadedFile(file) {
     if (err.code !== 'ENOENT') {
       console.error('Failed to remove uploaded payment proof:', err.message)
     }
+  }
+}
+
+function detectPaymentProofImageType(buffer, bytesRead) {
+  if (bytesRead >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'jpeg'
+  if (
+    bytesRead >= 8 &&
+    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47 &&
+    buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a
+  ) return 'png'
+  if (
+    bytesRead >= 12 &&
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) return 'webp'
+  return null
+}
+
+async function validateAndFinalizePaymentProof(file) {
+  let handle
+  try {
+    handle = await fs.promises.open(file.path, 'r')
+    const buffer = Buffer.alloc(12)
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
+    const imageType = detectPaymentProofImageType(buffer, bytesRead)
+    if (!imageType) throw new Error('Payment proof has an invalid image signature')
+
+    const filename = generatePaymentProofFilename(imageType)
+    const finalPath = path.join(uploadsDir, filename)
+    await fs.promises.rename(file.path, finalPath)
+
+    file.path = finalPath
+    file.filename = filename
+    file.mimetype = imageType === 'jpeg' ? 'image/jpeg' : `image/${imageType}`
+    return file
+  } finally {
+    if (handle) await handle.close()
   }
 }
 
@@ -95,26 +140,20 @@ function handlePaymentProofUpload(req, res, next) {
 }
 
 /**
- * Fields selected for attendee responses. The attendee view (toAttendeeView) is
- * strictly whitelisted, so gender is selected only for the admin notification
- * email payload and is never returned to the attendee.
+ * Fields selected for attendee responses. The view is strictly whitelisted;
+ * paymentScreenshot is selected only to derive paymentState and is never returned.
  */
 const PUBLIC_FIELDS =
-  'email gender fullName fee feeLabel sectionConference ' +
-  'arrivalDate departureDate programPreference paymentOption status createdAt paymentScreenshot'
+  'email fullName fee feeLabel paymentOption status createdAt paymentScreenshot'
 
 function toAttendeeView(reg) {
   const state = paymentState(reg)
   return {
-    registrationId: reg._id,
+    registrationId: String(reg._id),
     email: reg.email,
     fullName: reg.fullName,
     fee: reg.fee,
     feeLabel: reg.feeLabel,
-    sectionConference: reg.sectionConference,
-    arrivalDate: reg.arrivalDate,
-    departureDate: reg.departureDate,
-    programPreference: reg.programPreference,
     paymentOption: reg.paymentOption || 'pay_now',
     status: reg.status,
     createdAt: reg.createdAt,
@@ -140,19 +179,47 @@ router.post('/otp/request', async (req, res) => {
     return res.status(400).json({ success: false, message: 'A valid email address is required.' })
   }
 
-  const emailLimit = rateLimitHit(`otp:req:${email}`, 3, 10 * 60 * 1000)
-  const ipLimit = rateLimitHit(`otp:req:ip:${req.ip}`, 10, 10 * 60 * 1000)
-  if (!emailLimit.ok || !ipLimit.ok) {
-    return res.status(429).json({
-      success: false,
-      message: 'Too many requests. Please try again in a few minutes.',
-    })
-  }
+  const ip = normalizeIp(req.ip)
 
   try {
     if (!isDBConnected()) {
       console.error('OTP request skipped: database is unavailable')
       return res.status(202).json(generic)
+    }
+
+    const ipLimit = await hitRateLimit({
+      scope: 'otp_request_ip',
+      key: ip,
+      limit: 20,
+      windowMs: OTP_RATE_WINDOW_MS,
+      pepper: OTP_PEPPER,
+    })
+    if (!ipLimit.allowed) {
+      return res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' })
+    }
+
+    const emailLimit = await hitRateLimit({
+      scope: 'otp_request_email',
+      key: email,
+      limit: 5,
+      windowMs: OTP_RATE_WINDOW_MS,
+      pepper: OTP_PEPPER,
+    })
+    if (!emailLimit.allowed) {
+      return res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' })
+    }
+
+    const resendCooldown = await enforceCooldown({
+      scope: 'otp_resend_email',
+      key: email,
+      cooldownMs: OTP_RESEND_COOLDOWN_MS,
+      pepper: OTP_PEPPER,
+    })
+    if (!resendCooldown.allowed) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many requests. Please try again later.',
+      })
     }
 
     const reg = await Registration.findOne({ email }).select('email fullName fee paymentOption').lean()
@@ -216,12 +283,30 @@ router.post('/otp/verify', async (req, res) => {
     return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
   }
 
-  const verifyLimit = rateLimitHit(`otp:ver:${email}`, 5, 15 * 60 * 1000)
-  if (!verifyLimit.ok) {
-    return res.status(429).json({ success: false, message: 'Too many attempts. Please try again later.' })
-  }
-
   try {
+    const ip = normalizeIp(req.ip)
+    const ipLimit = await hitRateLimit({
+      scope: 'otp_verify_ip',
+      key: ip,
+      limit: 40,
+      windowMs: OTP_RATE_WINDOW_MS,
+      pepper: OTP_PEPPER,
+    })
+    if (!ipLimit.allowed) {
+      return res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' })
+    }
+
+    const emailLimit = await hitRateLimit({
+      scope: 'otp_verify_email',
+      key: email,
+      limit: 20,
+      windowMs: OTP_RATE_WINDOW_MS,
+      pepper: OTP_PEPPER,
+    })
+    if (!emailLimit.allowed) {
+      return res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' })
+    }
+
     const record = await RegistrationOtp.findOne({ email }).sort({ createdAt: -1 })
     if (!record || record.usedAt || record.expiresAt.getTime() <= Date.now()) {
       if (record && record.expiresAt.getTime() <= Date.now()) {
@@ -321,6 +406,14 @@ router.post('/registrations/:id/payment-proof', requireAttendee, handlePaymentPr
 
     if (!req.file) {
       return res.status(400).json({ success: false, errors: ['Payment screenshot is required.'] })
+    }
+
+    try {
+      await validateAndFinalizePaymentProof(req.file)
+    } catch (validationErr) {
+      await removeUploadedFile(req.file)
+      console.error('Payment proof validation failed:', validationErr.message)
+      return res.status(400).json({ success: false, message: 'Invalid payment screenshot.' })
     }
 
     const reg = await Registration.findOne({ _id: req.params.id, email: req.attendee.email })

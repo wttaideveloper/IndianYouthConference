@@ -11,17 +11,21 @@ export function generateSessionToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString('base64url')
 }
 
-/** Generate a storage filename from a trusted MIME type, never from the original name. */
-export function generatePaymentProofFilename(mimetype) {
-  const extensions = {
-    'image/jpeg': '.jpg',
-    'image/jpg': '.jpg',
-    'image/png': '.png',
-    'image/webp': '.webp',
-  }
-  const extension = extensions[mimetype]
+/** Generate a temporary storage filename that never uses the original name. */
+export function generatePaymentProofTemporaryFilename() {
+  return `${crypto.randomBytes(32).toString('hex')}.upload`
+}
 
-  if (!extension) throw new Error('Unsupported payment-proof MIME type')
+/** Generate a final storage filename from a validated image type. */
+export function generatePaymentProofFilename(imageType) {
+  const extensions = {
+    jpeg: '.jpg',
+    png: '.png',
+    webp: '.webp',
+  }
+  const extension = extensions[imageType]
+
+  if (!extension) throw new Error('Unsupported payment-proof image type')
 
   return `${crypto.randomBytes(32).toString('hex')}${extension}`
 }
