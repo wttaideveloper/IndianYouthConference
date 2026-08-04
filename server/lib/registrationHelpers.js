@@ -4,6 +4,7 @@ export const HOW_DID_YOU_KNOW = ['Facebook', 'WhatsApp', 'Instagram', 'Other']
 export const PAST_ATTENDANCE = ['Yes', 'No']
 export const PROGRAM_PREFERENCES = ['All the Days', 'Only Over the Weekend']
 export const STATUSES = ['pending', 'verified', 'rejected']
+const INTERNATIONAL_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
 const STANDARD_LABELS = {
   Student: 'Student',
@@ -21,6 +22,11 @@ export function calculateFee(occupation, programPreference) {
   }
 }
 
+function isValidPhoneNumber(value) {
+  const phone = String(value || '').trim()
+  return INTERNATIONAL_PHONE_PATTERN.test(phone) || /^[\d\s+\-()]{10,15}$/.test(phone)
+}
+
 export function validateRegistrationFields(body, { partial = false } = {}) {
   const errors = []
   const req = (field, msg) => {
@@ -34,7 +40,7 @@ export function validateRegistrationFields(body, { partial = false } = {}) {
     errors.push('Please select a valid gender')
   }
   if (body.phone !== undefined) {
-    if (!body.phone?.trim() || !/^[\d\s+\-()]{10,15}$/.test(body.phone)) {
+    if (!isValidPhoneNumber(body.phone)) {
       errors.push('A valid phone number is required')
     }
   }
@@ -64,6 +70,9 @@ export function validateRegistrationFields(body, { partial = false } = {}) {
   }
   req('emergencyContactName', 'Emergency contact name is required')
   req('emergencyContactNumber', 'Emergency contact number is required')
+  if (body.emergencyContactNumber?.trim() && !isValidPhoneNumber(body.emergencyContactNumber)) {
+    errors.push('A valid emergency contact number is required')
+  }
   if (body.status !== undefined && !STATUSES.includes(body.status)) {
     errors.push('Invalid status')
   }

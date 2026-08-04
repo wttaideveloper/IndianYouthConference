@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import Button from './Button'
 import PaymentSection from './PaymentSection'
+import PhoneNumberField from './PhoneNumberField'
 import { EVENT } from '../data/content'
 import {
   OCCUPATIONS,
@@ -12,12 +13,17 @@ import {
   PAST_ATTENDANCE,
   calculateFee,
 } from '../data/registration'
+import {
+  DEFAULT_COUNTRY_CALLING_CODE,
+  isValidInternationalPhone,
+  splitInternationalPhone,
+  toInternationalPhone,
+} from '../data/countryCallingCodes'
 
 interface FormData {
   firstName: string
   lastName: string
   gender: string
-  phone: string
   email: string
   streetAddress: string
   streetAddress2: string
@@ -32,14 +38,12 @@ interface FormData {
   howDidYouKnow: string
   pastAttendance: string
   emergencyContactName: string
-  emergencyContactNumber: string
 }
 
 const INITIAL: FormData = {
   firstName: '',
   lastName: '',
   gender: '',
-  phone: '',
   email: '',
   streetAddress: '',
   streetAddress2: '',
@@ -54,9 +58,7 @@ const INITIAL: FormData = {
   howDidYouKnow: '',
   pastAttendance: '',
   emergencyContactName: '',
-  emergencyContactNumber: '',
 }
-const stripPhone = (v: string) => v.replace(/[^\d\s+\-()]/g, '')
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -98,6 +100,10 @@ export default function RegisterForm() {
   const [paymentOption, setPaymentOption] = useState<'pay_now' | 'pay_later'>('pay_now')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CALLING_CODE)
+  const [phoneLocalNumber, setPhoneLocalNumber] = useState('')
+  const [emergencyCountryCode, setEmergencyCountryCode] = useState(DEFAULT_COUNTRY_CALLING_CODE)
+  const [emergencyLocalNumber, setEmergencyLocalNumber] = useState('')
 
   const feeInfo = useMemo(
     () =>
@@ -107,9 +113,7 @@ export default function RegisterForm() {
     [form.occupation, form.programPreference],
   )
 
-  const update = (field: keyof FormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
-    setErrors([])
+  const clearFieldError = (field: string) => {
     setFieldErrors((prev) => {
       if (!(field in prev)) return prev
       const next = { ...prev }
@@ -118,16 +122,42 @@ export default function RegisterForm() {
     })
   }
 
-  const handlePhoneChange =(field: 'phone' | 'emergencyContactNumber') =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const cleaned = stripPhone(e.target.value)
-      if (cleaned.replace(/\D/g, '').length > 12) {
-        e.target.value = form[field]
-        return
-      }
-      if (cleaned !== e.target.value) e.target.value = cleaned
-      update(field, cleaned)
+  const update = (field: keyof FormData, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+    setErrors([])
+    clearFieldError(field)
+  }
+
+  const resetPhoneFields = () => {
+    setPhoneCountryCode(DEFAULT_COUNTRY_CALLING_CODE)
+    setPhoneLocalNumber('')
+    setEmergencyCountryCode(DEFAULT_COUNTRY_CALLING_CODE)
+    setEmergencyLocalNumber('')
+  }
+
+  const handleCountryCodeChange = (field: 'phone' | 'emergencyContactNumber', value: string) => {
+    if (field === 'phone') setPhoneCountryCode(value)
+    else setEmergencyCountryCode(value)
+    setErrors([])
+    clearFieldError(field)
+  }
+
+  const handleLocalNumberChange = (field: 'phone' | 'emergencyContactNumber', value: string) => {
+    const trimmedValue = value.trim()
+    const parsed = trimmedValue.startsWith('+') ? splitInternationalPhone(trimmedValue) : null
+    const localNumber = (parsed?.localNumber || value.replace(/\D/g, '')).slice(0, 15)
+
+    if (field === 'phone') {
+      if (parsed) setPhoneCountryCode(parsed.countryCode)
+      setPhoneLocalNumber(localNumber)
+    } else {
+      if (parsed) setEmergencyCountryCode(parsed.countryCode)
+      setEmergencyLocalNumber(localNumber)
     }
+
+    setErrors([])
+    clearFieldError(field)
+  }
 
   const handleScreenshotChange = (file: File | null, preview: string | null) => {
     setScreenshot(file)
@@ -149,6 +179,7 @@ export default function RegisterForm() {
 
   const resetForm = () => {
     setForm(INITIAL)
+    resetPhoneFields()
     setPaymentOption('pay_now')
     setScreenshot(null)
     if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
@@ -164,7 +195,13 @@ export default function RegisterForm() {
     if (!form.firstName.trim()) errs.firstName = 'First name is required'
     if (!form.lastName.trim()) errs.lastName = 'Last name is required'
     if (!form.gender) errs.gender = 'Please select a gender'
-    if (!form.phone.trim()) errs.phone = 'A valid phone number is required'
+    const phone = toInternationalPhone(phoneCountryCode, phoneLocalNumber)
+    const emergencyContactNumber = toInternationalPhone(emergencyCountryCode, emergencyLocalNumber)
+    if (!phoneCountryCode) errs.phone = 'Select a country calling code'
+    else if (!phone) errs.phone = 'Phone number is required'
+    else if (!isValidInternationalPhone(phone)) {
+      errs.phone = 'Enter a valid international phone number (8–15 digits)'
+    }
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       errs.email = 'A valid email is required'
     }
@@ -179,7 +216,11 @@ export default function RegisterForm() {
     if (!form.howDidYouKnow) errs.howDidYouKnow = 'Please select how you heard about IYC'
     if (!form.pastAttendance) errs.pastAttendance = 'Please indicate if you attended IYC before'
     if (!form.emergencyContactName.trim()) errs.emergencyContactName = 'Emergency contact name is required'
-    if (!form.emergencyContactNumber.trim()) errs.emergencyContactNumber = 'Emergency contact number is required'
+    if (!emergencyCountryCode) errs.emergencyContactNumber = 'Select a country calling code'
+    else if (!emergencyContactNumber) errs.emergencyContactNumber = 'Emergency contact number is required'
+    else if (!isValidInternationalPhone(emergencyContactNumber)) {
+      errs.emergencyContactNumber = 'Enter a valid international phone number (8–15 digits)'
+    }
     return errs
   }
 
@@ -205,6 +246,11 @@ export default function RegisterForm() {
 
     const body = new FormData()
     Object.entries(form).forEach(([key, value]) => body.append(key, value))
+    body.append('phone', toInternationalPhone(phoneCountryCode, phoneLocalNumber))
+    body.append(
+      'emergencyContactNumber',
+      toInternationalPhone(emergencyCountryCode, emergencyLocalNumber),
+    )
     if (feeInfo) {
       body.append('fee', String(feeInfo.fee))
       body.append('feeLabel', feeInfo.label)
@@ -226,6 +272,7 @@ export default function RegisterForm() {
       setScreenshot(null)
       setScreenshotPreview(null)
       setForm(INITIAL)
+      resetPhoneFields()
       setPaymentOption('pay_now')
       setStatus('success')
       setMessage(data.message)
@@ -277,11 +324,16 @@ export default function RegisterForm() {
             </select>
             <FieldError error={fieldErrors.gender} />
           </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Phone Number *</label>
-            <input type="tel" inputMode="numeric" placeholder="+91 XXXXXXXXXX" required value={form.phone} onChange={handlePhoneChange('phone')} className="input-modern" />
-            <FieldError error={fieldErrors.phone} />
-          </div>
+          <PhoneNumberField
+            id="phone"
+            label="Phone Number"
+            required
+            countryCode={phoneCountryCode}
+            localNumber={phoneLocalNumber}
+            onCountryCodeChange={(value) => handleCountryCodeChange('phone', value)}
+            onLocalNumberChange={(value) => handleLocalNumberChange('phone', value)}
+            error={fieldErrors.phone}
+          />
         </div>
       </div>
 
@@ -409,15 +461,22 @@ export default function RegisterForm() {
       {/* Emergency contact */}
       <div>
         <SectionLabel>Emergency Contact</SectionLabel>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <div>
-            <input type="text" placeholder="Emergency Contact Name *" required value={form.emergencyContactName} onChange={(e) => update('emergencyContactName', e.target.value)} className="input-modern" />
+            <label htmlFor="emergency-contact-name" className="text-xs font-medium text-gray-500 mb-1.5 block">Emergency Contact Name *</label>
+            <input id="emergency-contact-name" type="text" placeholder="Emergency contact name" required value={form.emergencyContactName} onChange={(e) => update('emergencyContactName', e.target.value)} className="input-modern" />
             <FieldError error={fieldErrors.emergencyContactName} />
           </div>
-          <div>
-            <input type="tel" inputMode="numeric" placeholder="Emergency Contact Number *" required value={form.emergencyContactNumber} onChange={handlePhoneChange('emergencyContactNumber')} className="input-modern" />
-            <FieldError error={fieldErrors.emergencyContactNumber} />
-          </div>
+          <PhoneNumberField
+            id="emergency-contact-number"
+            label="Emergency Contact Number"
+            required
+            countryCode={emergencyCountryCode}
+            localNumber={emergencyLocalNumber}
+            onCountryCodeChange={(value) => handleCountryCodeChange('emergencyContactNumber', value)}
+            onLocalNumberChange={(value) => handleLocalNumberChange('emergencyContactNumber', value)}
+            error={fieldErrors.emergencyContactNumber}
+          />
         </div>
       </div>
 

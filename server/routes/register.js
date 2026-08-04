@@ -40,6 +40,7 @@ const GENDERS = ['Male', 'Female']
 const HOW_DID_YOU_KNOW = ['Facebook', 'WhatsApp', 'Instagram', 'Other']
 const PAST_ATTENDANCE = ['Yes', 'No']
 const PROGRAM_PREFERENCES = ['All the Days', 'Only Over the Weekend', '']
+const INTERNATIONAL_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
 const STANDARD_LABELS = {
   Student: 'Student',
@@ -57,13 +58,17 @@ function calculateFee(occupation, programPreference) {
   }
 }
 
+function isValidInternationalPhone(value) {
+  return INTERNATIONAL_PHONE_PATTERN.test(String(value || '').trim())
+}
+
 function validateBody(body) {
   const errors = []
   if (!['pay_now', 'pay_later'].includes(body.paymentOption)) errors.push('Please choose a payment option')
   if (!body.firstName?.trim()) errors.push('First name is required')
   if (!body.lastName?.trim()) errors.push('Last name is required')
   if (!GENDERS.includes(body.gender)) errors.push('Please select a valid gender')
-  if (!body.phone?.trim() || !/^[\d\s+\-()]{10,15}$/.test(body.phone)) {
+  if (!isValidInternationalPhone(body.phone)) {
     errors.push('A valid phone number is required')
   }
   if (!body.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
@@ -87,7 +92,9 @@ function validateBody(body) {
     errors.push('Please indicate if you attended IYC before')
   }
   if (!body.emergencyContactName?.trim()) errors.push('Emergency contact name is required')
-  if (!body.emergencyContactNumber?.trim()) errors.push('Emergency contact number is required')
+  if (!isValidInternationalPhone(body.emergencyContactNumber)) {
+    errors.push('A valid emergency contact number is required')
+  }
 
   return errors
 }
