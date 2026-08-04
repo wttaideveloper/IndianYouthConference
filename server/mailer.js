@@ -4,12 +4,29 @@ let transporter = null
 
 const CONTACT_EMAIL = process.env.FROM_EMAIL || process.env.SMTP_USER || 'info@indianyouthconference.com'
 
+function positiveInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function isPlaceholderValue(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  return !normalized || /^(your_|change_me|replace_|example|placeholder)/.test(normalized)
+}
+
+export function isEmailServiceConfigured() {
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env
+  return !isPlaceholderValue(SMTP_HOST) &&
+    !isPlaceholderValue(SMTP_USER) &&
+    !isPlaceholderValue(SMTP_PASS)
+}
+
 function getTransporter() {
   if (transporter) return transporter
 
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+  if (!isEmailServiceConfigured()) {
     return null
   }
 
@@ -18,6 +35,9 @@ function getTransporter() {
     port: Number(SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: positiveInteger(process.env.SMTP_CONNECTION_TIMEOUT_MS, 10_000),
+    greetingTimeout: positiveInteger(process.env.SMTP_GREETING_TIMEOUT_MS, 10_000),
+    socketTimeout: positiveInteger(process.env.SMTP_SOCKET_TIMEOUT_MS, 15_000),
   })
 
   return transporter
@@ -174,7 +194,7 @@ function formatRejectedHtml(data) {
   `
 }
 
-async function sendMail({ to, subject, html, replyTo, attachments = [] }) {
+async function sendMail({ to, subject, html, text, replyTo, attachments = [] }) {
   const transport = getTransporter()
   if (!transport) {
     throw new Error('Email is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS in .env')
@@ -188,7 +208,65 @@ async function sendMail({ to, subject, html, replyTo, attachments = [] }) {
     replyTo,
     subject,
     html,
+    text,
     attachments,
+  })
+}
+
+function adminMessageValues({ fullName, fee, status, paymentOption }, forSubject = false) {
+  const normalize = (value) => {
+    const stringValue = String(value ?? '')
+    return forSubject ? stringValue.replace(/[\r\n]+/g, ' ') : stringValue
+  }
+  const normalizedName = normalize(fullName)
+
+  return {
+    fullName: normalizedName,
+    firstName: normalizedName.trim().split(/\s+/)[0] || '',
+    fee: normalize(`₹${fee ?? ''}`),
+    status: normalize(status),
+    paymentOption: normalize(paymentOption),
+  }
+}
+
+function replaceAdminMessagePlaceholders(template, data, forSubject = false) {
+  const values = adminMessageValues(data, forSubject)
+  return String(template).replace(/\{\{\s*(fullName|firstName|fee|status|paymentOption)\s*\}\}/g, (_match, key) => values[key])
+}
+
+function formatAdminComposedHtml(message, data) {
+  const renderedMessage = replaceAdminMessagePlaceholders(message, data)
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#0b0e37,#e1137b);padding:28px;border-radius:12px 12px 0 0;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">Indian Youth Conference 2026</h1>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;color:#4a5568;line-height:1.6;">
+        ${escapeHtml(renderedMessage).replace(/\r\n|\r|\n/g, '<br>')}
+      </div>
+    </div>
+  `
+}
+
+/** Send a plain-text admin-composed message to one attendee. */
+export async function sendAdminComposedEmail({
+  to,
+  subject,
+  message,
+  fullName,
+  fee,
+  status,
+  paymentOption,
+}) {
+  const data = { fullName, fee, status, paymentOption }
+  const renderedSubject = replaceAdminMessagePlaceholders(subject, data, true)
+  const renderedMessage = replaceAdminMessagePlaceholders(message, data)
+
+  await sendMail({
+    to,
+    subject: renderedSubject,
+    text: renderedMessage,
+    html: formatAdminComposedHtml(message, data),
   })
 }
 

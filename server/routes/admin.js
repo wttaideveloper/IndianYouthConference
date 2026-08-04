@@ -1,7 +1,10 @@
 import { Router } from 'express'
+import { createHash } from 'crypto'
 import fs from 'fs'
+import mongoose from 'mongoose'
 import path from 'path'
 import Registration from '../models/Registration.js'
+import AdminEmailCampaign from '../models/AdminEmailCampaign.js'
 import { requireAdmin } from '../middleware/auth.js'
 import { isDBConnected } from '../db.js'
 import {
@@ -9,7 +12,12 @@ import {
   buildRegistrationUpdate,
   calculateFee,
 } from '../lib/registrationHelpers.js'
-import { sendUserVerifiedEmail, sendUserRejectedEmail } from '../mailer.js'
+import {
+  isEmailServiceConfigured,
+  sendAdminComposedEmail,
+  sendUserVerifiedEmail,
+  sendUserRejectedEmail,
+} from '../mailer.js'
 
 const router = Router()
 
@@ -17,8 +25,39 @@ router.use(requireAdmin)
 
 function buildFilter(query) {
   const filter = {}
+  const conditions = []
 
-  if (query.status) filter.status = query.status
+  if (query.status) conditions.push({ status: query.status })
+  if (query.paymentStatus === 'paid') {
+    conditions.push({
+      $or: [
+        { 'paymentScreenshot.path': { $exists: true, $nin: [null, ''] } },
+        { 'paymentScreenshot.filename': { $exists: true, $nin: [null, ''] } },
+      ],
+    })
+  }
+  if (query.paymentStatus === 'not_paid') {
+    conditions.push({
+      $and: [
+        {
+          $or: [
+            { paymentScreenshot: { $exists: false } },
+            { paymentScreenshot: null },
+            { 'paymentScreenshot.path': { $exists: false } },
+            { 'paymentScreenshot.path': { $in: [null, ''] } },
+          ],
+        },
+        {
+          $or: [
+            { paymentScreenshot: { $exists: false } },
+            { paymentScreenshot: null },
+            { 'paymentScreenshot.filename': { $exists: false } },
+            { 'paymentScreenshot.filename': { $in: [null, ''] } },
+          ],
+        },
+      ],
+    })
+  }
   if (query.gender) filter.gender = query.gender
   if (query.occupation) filter.occupation = query.occupation
   if (query.programPreference) filter.programPreference = query.programPreference
@@ -30,12 +69,14 @@ function buildFilter(query) {
 
   if (query.search?.trim()) {
     const s = query.search.trim()
-    filter.$or = [
-      { fullName: { $regex: s, $options: 'i' } },
-      { email: { $regex: s, $options: 'i' } },
-      { phone: { $regex: s, $options: 'i' } },
-      { sectionConference: { $regex: s, $options: 'i' } },
-    ]
+    conditions.push({
+      $or: [
+        { fullName: { $regex: s, $options: 'i' } },
+        { email: { $regex: s, $options: 'i' } },
+        { phone: { $regex: s, $options: 'i' } },
+        { sectionConference: { $regex: s, $options: 'i' } },
+      ],
+    })
   }
 
   if (query.from || query.to) {
@@ -47,6 +88,9 @@ function buildFilter(query) {
       filter.createdAt.$lte = to
     }
   }
+
+  if (conditions.length === 1) Object.assign(filter, conditions[0])
+  if (conditions.length > 1) filter.$and = conditions
 
   return filter
 }
@@ -90,6 +134,175 @@ const CSV_HEADERS = [
   'Admin Notes',
 ]
 
+const EMAIL_AUDIENCES = new Set(['all', 'verified', 'payment_under_review', 'pay_later_unpaid', 'individual'])
+const EMAIL_RECIPIENT_FIELDS = 'email fullName fee status paymentOption'
+const EMAIL_SUBJECT_MAX_LENGTH = 160
+const EMAIL_MESSAGE_MAX_LENGTH = 10_000
+const EMAIL_CAMPAIGN_HARD_LIMIT = 100
+
+function positiveInteger(value, fallback, maximum = Number.MAX_SAFE_INTEGER) {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback
+}
+
+function adminEmailConfig() {
+  return {
+    maximumRecipients: positiveInteger(process.env.ADMIN_EMAIL_MAX_RECIPIENTS, 100, EMAIL_CAMPAIGN_HARD_LIMIT),
+    concurrency: positiveInteger(process.env.ADMIN_EMAIL_CONCURRENCY, 3, 3),
+    perMinute: positiveInteger(process.env.ADMIN_EMAIL_RATE_PER_MINUTE, 1),
+    perHour: positiveInteger(process.env.ADMIN_EMAIL_RATE_PER_HOUR, 10),
+  }
+}
+
+function normalizeRecipientEmail(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function isValidRecipientEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function audienceFilter(audience) {
+  if (audience === 'verified') return { status: 'verified' }
+  if (audience === 'payment_under_review') {
+    return {
+      status: 'pending',
+      $or: [
+        { 'paymentScreenshot.path': { $exists: true, $nin: [null, ''] } },
+        { 'paymentScreenshot.filename': { $exists: true, $nin: [null, ''] } },
+      ],
+    }
+  }
+  if (audience === 'pay_later_unpaid') {
+    return {
+      paymentOption: 'pay_later',
+      status: 'pending',
+      $or: [
+        { paymentScreenshot: { $exists: false } },
+        { paymentScreenshot: null },
+        { 'paymentScreenshot.path': { $in: [null, ''] } },
+      ],
+    }
+  }
+  return {}
+}
+
+function parseAudienceRequest(body, { includeContent = false } = {}) {
+  const audience = String(body?.audience || '').trim()
+  if (!EMAIL_AUDIENCES.has(audience)) {
+    return { error: 'Choose a valid email audience.' }
+  }
+
+  const providedRegistrationId = String(body?.registrationId || '').trim()
+  let registrationId = null
+  if (audience === 'individual') {
+    if (!providedRegistrationId || !mongoose.isValidObjectId(providedRegistrationId)) {
+      return { error: 'A valid registration ID is required for an individual email.' }
+    }
+    registrationId = providedRegistrationId
+  } else if (providedRegistrationId) {
+    return { error: 'Registration ID is only allowed for an individual email.' }
+  }
+
+  if (!includeContent) return { audience, registrationId }
+
+  const subject = String(body?.subject || '').trim()
+  const message = String(body?.message || '').trim()
+  if (!subject || subject.length > EMAIL_SUBJECT_MAX_LENGTH || /[\r\n]/.test(subject) || /<\/?[a-z][^>]*>/i.test(subject)) {
+    return { error: 'Subject must be 1 to 160 characters and cannot contain line breaks.' }
+  }
+  if (!message || message.length > EMAIL_MESSAGE_MAX_LENGTH) {
+    return { error: 'Message must be 1 to 10,000 characters.' }
+  }
+  if (/<\/?[a-z][^>]*>/i.test(message)) {
+    return { error: 'Message must be plain text.' }
+  }
+
+  return { audience, registrationId, subject, message }
+}
+
+/** Resolve unique, valid recipients on the server for both preview and send. */
+async function resolveEmailRecipients({ audience, registrationId }) {
+  let registrations
+  if (audience === 'individual') {
+    const registration = await Registration.findById(registrationId).select(EMAIL_RECIPIENT_FIELDS).lean()
+    if (!registration) return { notFound: true, recipients: [], skippedInvalidEmails: 0, duplicateEmailsSkipped: 0 }
+    registrations = [registration]
+  } else {
+    registrations = await Registration.find(audienceFilter(audience)).select(EMAIL_RECIPIENT_FIELDS).lean()
+  }
+
+  const seenEmails = new Set()
+  const recipients = []
+  let skippedInvalidEmails = 0
+  let duplicateEmailsSkipped = 0
+
+  for (const registration of registrations) {
+    const email = normalizeRecipientEmail(registration.email)
+    if (!isValidRecipientEmail(email)) {
+      skippedInvalidEmails += 1
+      continue
+    }
+    if (seenEmails.has(email)) {
+      duplicateEmailsSkipped += 1
+      continue
+    }
+    seenEmails.add(email)
+    recipients.push({ ...registration, email })
+  }
+
+  return { recipients, skippedInvalidEmails, duplicateEmailsSkipped, notFound: false }
+}
+
+function campaignSummary(campaign) {
+  return {
+    recipients: campaign.recipientCount,
+    sent: campaign.sentCount,
+    failed: campaign.failedCount,
+    skipped: campaign.skippedCount,
+  }
+}
+
+async function campaignRateLimitExceeded(adminId, config) {
+  const now = Date.now()
+  const [minuteCount, hourCount] = await Promise.all([
+    AdminEmailCampaign.countDocuments({ adminId, startedAt: { $gte: new Date(now - 60 * 1000) } }),
+    AdminEmailCampaign.countDocuments({ adminId, startedAt: { $gte: new Date(now - 60 * 60 * 1000) } }),
+  ])
+  return minuteCount >= config.perMinute || hourCount >= config.perHour
+}
+
+async function sendRecipientsWithConcurrency(recipients, payload, campaignId, concurrency) {
+  let cursor = 0
+  let sent = 0
+  let failed = 0
+
+  const worker = async () => {
+    while (cursor < recipients.length) {
+      const recipient = recipients[cursor]
+      cursor += 1
+      try {
+        await sendAdminComposedEmail({
+          to: recipient.email,
+          subject: payload.subject,
+          message: payload.message,
+          fullName: recipient.fullName,
+          fee: recipient.fee,
+          status: recipient.status,
+          paymentOption: recipient.paymentOption || 'pay_now',
+        })
+        sent += 1
+      } catch (err) {
+        failed += 1
+        console.error(`Admin email campaign ${campaignId} delivery failed:`, err.message)
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, recipients.length) }, worker))
+  return { sent, failed }
+}
+
 router.get('/stats', async (_req, res) => {
   if (!isDBConnected()) {
     return res.status(503).json({ success: false, message: 'Database not connected' })
@@ -110,6 +323,175 @@ router.get('/stats', async (_req, res) => {
     success: true,
     stats: { total, pending, verified, rejected, byOccupation },
   })
+})
+
+router.post('/emails/preview', async (req, res) => {
+  if (!isDBConnected()) {
+    return res.status(503).json({ success: false, message: 'Database not connected' })
+  }
+
+  const parsed = parseAudienceRequest(req.body)
+  if (parsed.error) return res.status(400).json({ success: false, message: parsed.error })
+
+  try {
+    const resolved = await resolveEmailRecipients(parsed)
+    if (resolved.notFound) {
+      return res.status(404).json({ success: false, message: 'Registration not found' })
+    }
+
+    return res.json({
+      success: true,
+      audience: parsed.audience,
+      recipientCount: resolved.recipients.length,
+      skippedInvalidEmails: resolved.skippedInvalidEmails,
+      duplicateEmailsSkipped: resolved.duplicateEmailsSkipped,
+    })
+  } catch (err) {
+    console.error('Admin email preview failed:', err.message)
+    return res.status(500).json({ success: false, message: 'Unable to preview email recipients.' })
+  }
+})
+
+router.post('/emails/send', async (req, res) => {
+  if (!isDBConnected()) {
+    return res.status(503).json({ success: false, message: 'Database not connected' })
+  }
+
+  const parsed = parseAudienceRequest(req.body, { includeContent: true })
+  if (parsed.error) return res.status(400).json({ success: false, message: parsed.error })
+
+  const idempotencyKey = String(req.get('Idempotency-Key') || '').trim()
+  if (!idempotencyKey || idempotencyKey.length > 200 || /[\r\n]/.test(idempotencyKey)) {
+    return res.status(400).json({ success: false, message: 'A valid Idempotency-Key header is required.' })
+  }
+
+  const adminId = String(req.admin.username)
+  let campaign = null
+
+  try {
+    const existing = await AdminEmailCampaign.findOne({ adminId, idempotencyKey }).lean()
+    if (existing?.status === 'processing') {
+      return res.status(409).json({ success: false, message: 'This email campaign is already processing.' })
+    }
+    if (existing?.status === 'completed') {
+      return res.json({
+        success: true,
+        audience: existing.audience,
+        summary: campaignSummary(existing),
+        ...(existing.audience === 'individual' && {
+          individual: {
+            registrationId: String(existing.registrationId),
+            delivery: existing.sentCount === 1 ? 'sent' : existing.failedCount ? 'failed' : 'skipped',
+          },
+        }),
+      })
+    }
+    if (existing?.status === 'failed') {
+      return res.status(409).json({ success: false, message: 'This email campaign did not complete. Use a new idempotency key.' })
+    }
+
+    if (!isEmailServiceConfigured()) {
+      return res.status(503).json({ success: false, message: 'Email service is not configured.' })
+    }
+
+    const resolved = await resolveEmailRecipients(parsed)
+    if (resolved.notFound) {
+      return res.status(404).json({ success: false, message: 'Registration not found' })
+    }
+
+    const config = adminEmailConfig()
+    if (resolved.recipients.length > config.maximumRecipients) {
+      return res.status(400).json({
+        success: false,
+        message: `This campaign exceeds the ${config.maximumRecipients}-recipient limit.`,
+      })
+    }
+    if (await campaignRateLimitExceeded(adminId, config)) {
+      return res.status(429).json({ success: false, message: 'Email campaign limit reached. Please try again later.' })
+    }
+
+    const campaignData = {
+      adminId,
+      idempotencyKey,
+      audience: parsed.audience,
+      registrationId: parsed.registrationId,
+      subject: parsed.subject,
+      messageHash: createHash('sha256').update(parsed.message).digest('hex'),
+      recipientCount: resolved.recipients.length,
+      skippedCount: resolved.skippedInvalidEmails + resolved.duplicateEmailsSkipped,
+      startedAt: new Date(),
+    }
+
+    try {
+      campaign = await AdminEmailCampaign.create(campaignData)
+    } catch (err) {
+      if (err?.code !== 11000) throw err
+
+      const concurrentCampaign = await AdminEmailCampaign.findOne({ adminId, idempotencyKey }).lean()
+      if (concurrentCampaign?.status === 'completed') {
+        return res.json({
+          success: true,
+          audience: concurrentCampaign.audience,
+          summary: campaignSummary(concurrentCampaign),
+          ...(concurrentCampaign.audience === 'individual' && {
+            individual: {
+              registrationId: String(concurrentCampaign.registrationId),
+              delivery: concurrentCampaign.sentCount === 1 ? 'sent' : concurrentCampaign.failedCount ? 'failed' : 'skipped',
+            },
+          }),
+        })
+      }
+      return res.status(409).json({ success: false, message: 'This email campaign is already processing.' })
+    }
+
+    const delivery = await sendRecipientsWithConcurrency(
+      resolved.recipients,
+      parsed,
+      campaign._id,
+      config.concurrency,
+    )
+    const completedAt = new Date()
+    const summary = {
+      recipients: resolved.recipients.length,
+      sent: delivery.sent,
+      failed: delivery.failed,
+      skipped: resolved.skippedInvalidEmails + resolved.duplicateEmailsSkipped,
+    }
+
+    await AdminEmailCampaign.findByIdAndUpdate(campaign._id, {
+      $set: {
+        status: 'completed',
+        sentCount: summary.sent,
+        failedCount: summary.failed,
+        skippedCount: summary.skipped,
+        completedAt,
+      },
+    })
+
+    return res.json({
+      success: true,
+      audience: parsed.audience,
+      summary,
+      ...(parsed.audience === 'individual' && {
+        individual: {
+          registrationId: parsed.registrationId,
+          delivery: summary.sent === 1 ? 'sent' : summary.failed ? 'failed' : 'skipped',
+        },
+      }),
+    })
+  } catch (err) {
+    if (campaign?._id) {
+      try {
+        await AdminEmailCampaign.findByIdAndUpdate(campaign._id, {
+          $set: { status: 'failed', completedAt: new Date() },
+        })
+      } catch (updateErr) {
+        console.error('Admin email campaign failure status update failed:', updateErr.message)
+      }
+    }
+    console.error('Admin email send failed:', err.message)
+    return res.status(500).json({ success: false, message: 'Unable to send email campaign.' })
+  }
 })
 
 router.get('/registrations', async (req, res) => {

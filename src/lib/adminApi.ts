@@ -53,6 +53,7 @@ export interface RegistrationFilters {
   limit?: number
   search?: string
   status?: string
+  paymentStatus?: string
   gender?: string
   occupation?: string
   programPreference?: string
@@ -61,6 +62,38 @@ export interface RegistrationFilters {
   sectionConference?: string
   from?: string
   to?: string
+}
+
+export type AdminEmailAudience = 'all' | 'verified' | 'payment_under_review' | 'pay_later_unpaid' | 'individual'
+
+export interface AdminEmailAudienceRequest {
+  audience: AdminEmailAudience
+  registrationId?: string
+}
+
+export interface AdminEmailPreview {
+  success: true
+  audience: AdminEmailAudience
+  recipientCount: number
+  skippedInvalidEmails: number
+  duplicateEmailsSkipped: number
+}
+
+export interface AdminEmailCampaignSummary {
+  recipients: number
+  sent: number
+  failed: number
+  skipped: number
+}
+
+export interface AdminEmailCampaignResponse {
+  success: true
+  audience: AdminEmailAudience
+  summary: AdminEmailCampaignSummary
+  individual?: {
+    registrationId: string
+    delivery: 'sent' | 'failed' | 'skipped'
+  }
 }
 
 export interface Registration {
@@ -118,6 +151,31 @@ function toQuery(filters: RegistrationFilters) {
 
 export async function fetchStats() {
   return adminFetch('/api/admin/stats')
+}
+
+export function previewAdminEmailAudience(request: AdminEmailAudienceRequest) {
+  return adminFetch('/api/admin/emails/preview', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  }) as Promise<AdminEmailPreview>
+}
+
+export function sendAdminEmailCampaign({
+  audience,
+  registrationId,
+  subject,
+  message,
+  idempotencyKey,
+}: AdminEmailAudienceRequest & {
+  subject: string
+  message: string
+  idempotencyKey: string
+}) {
+  return adminFetch('/api/admin/emails/send', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ audience, ...(registrationId && { registrationId }), subject, message }),
+  }) as Promise<AdminEmailCampaignResponse>
 }
 
 export async function fetchRegistrations(filters: RegistrationFilters = {}) {

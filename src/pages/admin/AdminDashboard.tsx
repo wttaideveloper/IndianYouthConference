@@ -17,6 +17,7 @@ import {
   X,
   Inbox,
   IndianRupee,
+  Mail,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -28,6 +29,7 @@ import {
   type RegistrationFilters,
 } from '../../lib/adminApi'
 import RegistrationModal from '../../components/admin/RegistrationModal'
+import AdminEmailModal from '../../components/admin/AdminEmailModal'
 import { deleteRegistration } from '../../lib/adminApi'
 
 const STATUS_CONFIG = {
@@ -41,6 +43,7 @@ const EMPTY_FILTERS: RegistrationFilters = {
   limit: 20,
   search: '',
   status: '',
+  paymentStatus: '',
   gender: '',
   occupation: '',
   programPreference: '',
@@ -57,7 +60,7 @@ function getInitials(name: string) {
 
 function activeFilterCount(filters: RegistrationFilters) {
   const keys: (keyof RegistrationFilters)[] = [
-    'status', 'gender', 'occupation', 'programPreference',
+    'status', 'paymentStatus', 'gender', 'occupation', 'programPreference',
     'howDidYouKnow', 'pastAttendance', 'sectionConference', 'from', 'to', 'search',
   ]
   return keys.filter((k) => filters[k]).length
@@ -76,6 +79,8 @@ export default function AdminDashboard() {
   const [editOnOpen, setEditOnOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailRegistrationId, setEmailRegistrationId] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -163,6 +168,14 @@ export default function AdminDashboard() {
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEmailRegistrationId(null); setShowEmailModal(true) }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg transition-all"
+          >
+            <Mail size={15} />
+            <span className="hidden sm:inline">Send Email</span>
           </button>
           <button
             type="button"
@@ -268,6 +281,18 @@ export default function AdminDashboard() {
                   </select>
                 </div>
               ))}
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Payment Status</label>
+                <select
+                  value={filters.paymentStatus || ''}
+                  onChange={(e) => updateFilter('paymentStatus', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All</option>
+                  <option value="paid">Paid</option>
+                  <option value="not_paid">Not Paid</option>
+                </select>
+              </div>
               <div>
                 <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Section</label>
                 <input
@@ -446,6 +471,18 @@ export default function AdminDashboard() {
         startEditing={editOnOpen}
         onClose={() => { setSelectedId(null); setEditOnOpen(false) }}
         onUpdated={loadData}
+        onSendEmail={(registrationId) => {
+          setSelectedId(null)
+          setEditOnOpen(false)
+          setEmailRegistrationId(registrationId)
+          setShowEmailModal(true)
+        }}
+      />
+      <AdminEmailModal
+        isOpen={showEmailModal}
+        registrationId={emailRegistrationId}
+        registrations={items}
+        onClose={() => { setShowEmailModal(false); setEmailRegistrationId(null) }}
       />
     </div>
   )

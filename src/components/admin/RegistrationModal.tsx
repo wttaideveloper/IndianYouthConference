@@ -22,6 +22,7 @@ interface Props {
   startEditing?: boolean
   onClose: () => void
   onUpdated: () => void
+  onSendEmail?: (registrationId: string) => void
 }
 
 const STATUS_OPTIONS = [
@@ -73,7 +74,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const inputCls = 'w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20'
 
-export default function RegistrationModal({ id, startEditing = false, onClose, onUpdated }: Props) {
+export default function RegistrationModal({ id, startEditing = false, onClose, onUpdated, onSendEmail }: Props) {
   const [item, setItem] = useState<Registration | null>(null)
   const [form, setForm] = useState<FormState | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -198,6 +199,17 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
               <div className="absolute top-4 right-4 flex items-center gap-2">
                 {!loading && item && !isEditing && (
                   <>
+                    {onSendEmail && (
+                      <button
+                        type="button"
+                        onClick={() => onSendEmail(item._id)}
+                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                        title="Send email"
+                        aria-label="Send email to this attendee"
+                      >
+                        <Mail size={14} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setIsEditing(true)}
