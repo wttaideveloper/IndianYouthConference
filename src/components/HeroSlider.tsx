@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, MapPin, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 import { HERO_SLIDES, EVENT } from '../data/content'
 import Button from './Button'
+import RegistrationAccessModal from './RegistrationAccessModal'
 
 export default function HeroSlider() {
   const [current, setCurrent] = useState(0)
+  const [isRegistrationAccessOpen, setIsRegistrationAccessOpen] = useState(false)
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % HERO_SLIDES.length)
@@ -108,6 +110,14 @@ export default function HeroSlider() {
                 Register Now
                 <ArrowRight size={18} />
               </Button>
+              <Button
+                variant="glass"
+                size="lg"
+                onClick={() => setIsRegistrationAccessOpen(true)}
+                className="!border-primary/60 !bg-navy/70 hover:!border-secondary/70 hover:!bg-primary/20"
+              >
+                Already Registered?
+              </Button>
               <Button to="/about" variant="glass" size="lg">
                 Learn More
               </Button>
@@ -175,6 +185,10 @@ export default function HeroSlider() {
           ))}
         </div>
       </div>
+      <RegistrationAccessModal
+        isOpen={isRegistrationAccessOpen}
+        onClose={() => setIsRegistrationAccessOpen(false)}
+      />
     </section>
   )
 }
