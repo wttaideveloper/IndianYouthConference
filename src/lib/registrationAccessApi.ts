@@ -65,6 +65,12 @@ export function getAttendeeRegistrations() {
   return request<{ success: true; items: RegistrationAccessItem[] }>('/api/registration-access/registrations')
 }
 
+export function logoutAttendeeRegistrationAccess() {
+  return request<{ success: true; message: string }>('/api/registration-access/logout', {
+    method: 'POST',
+  })
+}
+
 export function uploadPaymentProof(registrationId: string, file: File) {
   const formData = new FormData()
   formData.append('paymentScreenshot', file)

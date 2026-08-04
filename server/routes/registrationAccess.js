@@ -7,7 +7,12 @@ import Registration from '../models/Registration.js'
 import RegistrationOtp from '../models/RegistrationOtp.js'
 import AttendeeSession from '../models/AttendeeSession.js'
 import { isDBConnected } from '../db.js'
-import { requireAttendee, setAttendeeSessionCookie } from '../middleware/attendeeAuth.js'
+import {
+  clearAttendeeSessionCookie,
+  requireAttendee,
+  SESSION_COOKIE,
+  setAttendeeSessionCookie,
+} from '../middleware/attendeeAuth.js'
 import {
   generateOtp,
   generatePaymentProofFilename,
@@ -363,6 +368,28 @@ router.post('/otp/verify', async (req, res) => {
     console.error('OTP verification failed:', err.message)
     return res.status(500).json({ success: false, message: 'Failed to verify registration. Please request a new code.' })
   }
+})
+
+/**
+ * POST /api/registration-access/logout
+ * Revokes the current temporary attendee session when one is present. This is
+ * intentionally idempotent so a missing, expired, or already-deleted session
+ * still leaves the browser in a signed-out state.
+ */
+router.post('/logout', async (req, res) => {
+  try {
+    const token = req.cookies?.[SESSION_COOKIE]
+    if (token) {
+      await AttendeeSession.deleteOne({ tokenHash: hmacValue(token, TOKEN_PEPPER) })
+    }
+  } catch (err) {
+    console.error('Attendee logout failed:', err.message)
+    return res.status(500).json({ success: false, message: 'Unable to end attendee access session.' })
+  } finally {
+    clearAttendeeSessionCookie(res)
+  }
+
+  return res.json({ success: true, message: 'Attendee access session ended.' })
 })
 
 /**

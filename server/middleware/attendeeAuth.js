@@ -58,4 +58,4 @@ export async function requireAttendee(req, res, next) {
   }
 }
 
-export { SESSION_COOKIE, setAttendeeSessionCookie }
+export { SESSION_COOKIE, setAttendeeSessionCookie, clearAttendeeSessionCookie }

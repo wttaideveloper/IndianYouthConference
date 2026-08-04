@@ -20,6 +20,7 @@ import { DONATION } from '../data/content'
 import { PAYMENT_NOTE } from '../data/registration'
 import {
   getAttendeeRegistrations,
+  logoutAttendeeRegistrationAccess,
   RegistrationAccessApiError,
   type PaymentState,
   type RegistrationAccessItem,
@@ -242,6 +243,7 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
   const [hasRequestedOtp, setHasRequestedOtp] = useState(false)
   const [isRequesting, setIsRequesting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
@@ -425,6 +427,38 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
     if (changed) restoreCooldown(nextEmail)
   }
 
+  const resetForAnotherEmail = () => {
+    otpCooldownExpiries.delete(cooldownKey(email))
+    clearFile()
+    setItems([])
+    setSelectedId(null)
+    setEmail('')
+    setCode('')
+    setError('')
+    setNotice('')
+    setCooldownSeconds(0)
+    setCooldownExpiresAt(null)
+    setCooldownStatus(null)
+    setHasRequestedOtp(false)
+    setIsRequesting(false)
+    setStep('email')
+  }
+
+  const checkAnotherEmail = async () => {
+    if (isLoggingOut) return
+
+    setIsLoggingOut(true)
+    try {
+      await logoutAttendeeRegistrationAccess()
+    } catch {
+      // The local reset is still safe: the server clears the cookie whenever it
+      // receives this request, and an unavailable request must not trap the user.
+    } finally {
+      resetForAnotherEmail()
+      setIsLoggingOut(false)
+    }
+  }
+
   const submitProof = async () => {
     if (!selectedItem || !file) return
 
@@ -537,6 +571,9 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
                 <div className="space-y-3">
                   {items.map((item) => <button type="button" key={item.registrationId} onClick={() => { setSelectedId(item.registrationId); setStep('status'); setError(''); setNotice('') }} className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-primary/40 hover:shadow-md"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-navy">{item.fullName}</p><p className="mt-1 text-xs text-gray-500">₹{item.fee} · {item.feeLabel}</p><p className="mt-1 text-xs text-gray-400">Registered {new Date(item.createdAt).toLocaleDateString()}</p></div><span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusClasses(item.paymentState)}`}>{statusLabel(item.paymentState)}</span></div></button>)}
                 </div>
+                <button type="button" onClick={() => void checkAnotherEmail()} disabled={isLoggingOut} className="mt-5 w-full text-xs font-semibold text-primary hover:text-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
+                  {isLoggingOut ? 'Ending access…' : 'Check another email'}
+                </button>
               </div>
             )}
 
@@ -549,6 +586,10 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
                 {selectedItem.paymentState === 'rejected' && <><div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mr-2 inline-block align-text-bottom" size={18} />Your previous payment proof was rejected. Please submit a clear replacement.</div><PaymentInstructions item={selectedItem} replacement /><div className="mt-5"><PaymentProofUpload file={file} previewUrl={previewUrl} uploading={isSubmitting} onPick={selectFile} onRemove={clearFile} onSubmit={() => void submitProof()} /></div></>}
                 {selectedItem.paymentState === 'under_review' && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-center"><Clock3 className="mx-auto mb-3 text-blue-600" size={32} /><h3 className="font-display text-xl font-bold text-navy">Payment proof under review</h3><p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-600">Your payment proof has been submitted and is waiting for an administrator to review it. No further upload is needed.</p></div>}
                 {selectedItem.paymentState === 'verified' && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center"><CheckCircle2 className="mx-auto mb-3 text-emerald-600" size={34} /><h3 className="font-display text-xl font-bold text-navy">Payment verified</h3><p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-600">Your payment has been verified. We look forward to seeing you at IYC 2026.</p></div>}
+                <button type="button" onClick={() => void checkAnotherEmail()} disabled={isLoggingOut || isSubmitting} className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
+                  {isLoggingOut ? <LoaderCircle size={16} className="animate-spin" /> : <ArrowLeft size={16} />}
+                  {isLoggingOut ? 'Ending access…' : 'Check another email'}
+                </button>
               </div>
             )}
           </div>
