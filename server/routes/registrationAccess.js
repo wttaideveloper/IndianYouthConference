@@ -7,7 +7,7 @@ import Registration from '../models/Registration.js'
 import RegistrationOtp from '../models/RegistrationOtp.js'
 import AttendeeSession from '../models/AttendeeSession.js'
 import { isDBConnected } from '../db.js'
-import { requireAttendee, SESSION_COOKIE } from '../middleware/attendeeAuth.js'
+import { requireAttendee, setAttendeeSessionCookie } from '../middleware/attendeeAuth.js'
 import {
   generateOtp,
   generateSessionToken,
@@ -46,9 +46,6 @@ const router = Router()
 const OTP_TTL_MS = 10 * 60 * 1000
 const OTP_MAX_ATTEMPTS = 5
 const SESSION_TTL_MS = 20 * 60 * 1000
-const isSecureCookie =
-  process.env.COOKIE_SECURE === 'true' ||
-  (process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production')
 const OTP_PEPPER = process.env.REGISTRATION_ACCESS_OTP_PEPPER
 const TOKEN_PEPPER = process.env.REGISTRATION_ACCESS_TOKEN_PEPPER
 const GENERIC_OTP_ERROR = 'The verification code is invalid or expired.'
@@ -121,16 +118,6 @@ function toAttendeeView(reg) {
     paymentState: state,
     canUploadPaymentProof: canUploadPaymentProof(state),
   }
-}
-
-const setSessionCookie = (res, token, expiresAt) => {
-  res.cookie(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: isSecureCookie,
-    sameSite: 'Lax',
-    expires: expiresAt,
-    path: '/api/registration-access',
-  })
 }
 
 /**
@@ -281,7 +268,7 @@ router.post('/otp/verify', async (req, res) => {
     const token = generateSessionToken()
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
     await AttendeeSession.create({ email, tokenHash: hmacValue(token, TOKEN_PEPPER), expiresAt })
-    setSessionCookie(res, token, expiresAt)
+    setAttendeeSessionCookie(res, token)
 
     return res.json({ success: true, message: 'Verified successfully.', expiresAt })
   } catch (err) {

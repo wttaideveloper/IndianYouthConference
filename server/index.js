@@ -18,7 +18,9 @@ const isProd = process.env.NODE_ENV === 'production'
 
 const app = express()
 
-app.use(cors({ origin: isProd ? false : true, credentials: true }))
+if (process.env.APP_ORIGIN) {
+  app.use(cors({ origin: process.env.APP_ORIGIN, credentials: true }))
+}
 app.use(express.json())
 app.use(cookieParser())
 
@@ -47,7 +49,22 @@ if (isProd) {
   })
 }
 
+function validateRegistrationAccessConfig() {
+  const missing = [
+    !process.env.REGISTRATION_ACCESS_OTP_PEPPER && 'REGISTRATION_ACCESS_OTP_PEPPER',
+    !process.env.REGISTRATION_ACCESS_TOKEN_PEPPER && 'REGISTRATION_ACCESS_TOKEN_PEPPER',
+  ].filter(Boolean)
+
+  if (missing.length === 0) return
+
+  const message = `Registration access requires ${missing.join(' and ')}`
+  if (isProd) throw new Error(message)
+
+  console.error(`Warning: ${message}. Registration-access requests will be rejected until configured.`)
+}
+
 async function start() {
+  validateRegistrationAccessConfig()
   const dbOk = await connectDB()
 
   await new Promise((resolve, reject) => {

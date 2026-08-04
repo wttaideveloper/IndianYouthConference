@@ -2,7 +2,26 @@ import AttendeeSession from '../models/AttendeeSession.js'
 import { hmacValue } from '../lib/crypto.js'
 
 const SESSION_COOKIE = 'iyc_attendee'
+const SESSION_MAX_AGE_MS = 20 * 60 * 1000
 const TOKEN_PEPPER = process.env.REGISTRATION_ACCESS_TOKEN_PEPPER
+
+function attendeeCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
+    sameSite: 'lax',
+    path: '/api/registration-access',
+    maxAge: SESSION_MAX_AGE_MS,
+  }
+}
+
+function setAttendeeSessionCookie(res, token) {
+  res.cookie(SESSION_COOKIE, token, attendeeCookieOptions())
+}
+
+function clearAttendeeSessionCookie(res) {
+  res.clearCookie(SESSION_COOKIE, attendeeCookieOptions())
+}
 
 /**
  * Verify the attendee session cookie and attach the verified { email, sessionId }
@@ -26,6 +45,7 @@ export async function requireAttendee(req, res, next) {
     const session = await AttendeeSession.findOne({ tokenHash })
 
     if (!session || session.expiresAt.getTime() <= Date.now()) {
+      clearAttendeeSessionCookie(res)
       return res.status(401).json({ success: false, message: 'Session expired. Please sign in again.' })
     }
 
@@ -38,4 +58,4 @@ export async function requireAttendee(req, res, next) {
   }
 }
 
-export { SESSION_COOKIE }
+export { SESSION_COOKIE, setAttendeeSessionCookie }
