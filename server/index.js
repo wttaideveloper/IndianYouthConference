@@ -3,10 +3,12 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 import { connectDB } from './db.js'
 import registerRouter from './routes/register.js'
 import authRouter from './routes/auth.js'
 import adminRouter from './routes/admin.js'
+import registrationAccessRouter from './routes/registrationAccess.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.join(__dirname, '..', '.env') })
@@ -16,8 +18,9 @@ const isProd = process.env.NODE_ENV === 'production'
 
 const app = express()
 
-app.use(cors({ origin: isProd ? false : true }))
+app.use(cors({ origin: isProd ? false : true, credentials: true }))
 app.use(express.json())
+app.use(cookieParser())
 
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -30,6 +33,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/register', registerRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/registration-access', registrationAccessRouter)
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ success: false, message: 'API endpoint not found' })

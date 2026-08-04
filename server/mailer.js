@@ -198,3 +198,39 @@ export async function sendUserRejectedEmail(data) {
     html: formatRejectedHtml(data),
   })
 }
+
+function formatOtpHtml(otp, { fullName, expiresAt }) {
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#0b0e37,#e1137b);padding:28px;border-radius:12px 12px 0 0;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">Your Registration Access Code</h1>
+        <p style="color:#ffc107;margin:8px 0 0;font-size:14px;">Indian Youth Conference 2026</p>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;">
+        <p style="color:#4a5568;line-height:1.6;">Hello${fullName ? ` <strong>${fullName}</strong>` : ''},</p>
+        <p style="color:#4a5568;line-height:1.6;">
+          Use the code below to access your IYC 2026 registration status and payment details:
+        </p>
+        <div style="background:#f4f1ff;border:1px solid #e0d6ff;border-radius:10px;padding:18px;text-align:center;margin:20px 0;font-size:32px;font-weight:700;letter-spacing:8px;color:#0b0e37;">${otp}</div>
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;">
+          This code expires in <strong>10 minutes</strong> and can be used only once.
+          If you did not request this, you can safely ignore this email.
+        </p>
+        <p style="color:#4a5568;margin-top:24px;line-height:1.6;">
+          Questions? Contact us at
+          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>
+          or call <strong>+91 8123941065</strong>.
+        </p>
+      </div>
+    </div>
+  `
+}
+
+/** Send the OTP used to access an existing registration via the "Already Registered?" flow. */
+export async function sendOtpEmail({ email, otp, fullName, expiresAt }) {
+  await sendMail({
+    to: email,
+    subject: 'IYC 2026 — Registration Access Code',
+    html: formatOtpHtml(otp, { fullName, expiresAt }),
+  })
+}
