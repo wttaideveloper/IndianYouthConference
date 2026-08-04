@@ -213,7 +213,7 @@ function formatOtpHtml(otp, { fullName, expiresAt }) {
         </p>
         <div style="background:#f4f1ff;border:1px solid #e0d6ff;border-radius:10px;padding:18px;text-align:center;margin:20px 0;font-size:32px;font-weight:700;letter-spacing:8px;color:#0b0e37;">${otp}</div>
         <p style="color:#6b7280;font-size:13px;line-height:1.6;">
-          This code expires in <strong>10 minutes</strong> and can be used only once.
+          This 8-digit code expires in <strong>10 minutes</strong> and can be used only once.
           If you did not request this, you can safely ignore this email.
         </p>
         <p style="color:#4a5568;margin-top:24px;line-height:1.6;">

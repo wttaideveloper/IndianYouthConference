@@ -11,7 +11,7 @@ import { requireAttendee, SESSION_COOKIE } from '../middleware/attendeeAuth.js'
 import {
   generateOtp,
   generateSessionToken,
-  hashValue,
+  hmacValue,
   verifyHash,
 } from '../lib/crypto.js'
 import { paymentState, canUploadPaymentProof } from '../lib/paymentState.js'
@@ -49,6 +49,20 @@ const SESSION_TTL_MS = 20 * 60 * 1000
 const isSecureCookie =
   process.env.COOKIE_SECURE === 'true' ||
   (process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production')
+const OTP_PEPPER = process.env.REGISTRATION_ACCESS_OTP_PEPPER
+const TOKEN_PEPPER = process.env.REGISTRATION_ACCESS_TOKEN_PEPPER
+const GENERIC_OTP_ERROR = 'The verification code is invalid or expired.'
+
+// Fail closed if the registration-access feature is not configured.
+router.use((_req, res, next) => {
+  if (!OTP_PEPPER || !TOKEN_PEPPER) {
+    return res.status(500).json({
+      success: false,
+      message: 'Registration access is not configured. Set REGISTRATION_ACCESS_OTP_PEPPER and REGISTRATION_ACCESS_TOKEN_PEPPER.',
+    })
+  }
+  next()
+})
 
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase()
@@ -58,26 +72,28 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-/** Public projection shown to the attendee (never leaks address/phone/emergency/notes). */
+/**
+ * Fields selected for attendee responses. The attendee view (toAttendeeView) is
+ * strictly whitelisted, so gender is selected only for the admin notification
+ * email payload and is never returned to the attendee.
+ */
 const PUBLIC_FIELDS =
-  'firstName lastName fullName gender fee feeLabel sectionConference ' +
+  'email gender fullName fee feeLabel sectionConference ' +
   'arrivalDate departureDate programPreference paymentOption status createdAt paymentScreenshot'
 
 function toAttendeeView(reg) {
   const state = paymentState(reg)
   return {
-    _id: reg._id,
-    firstName: reg.firstName,
-    lastName: reg.lastName,
+    registrationId: reg._id,
+    email: reg.email,
     fullName: reg.fullName,
-    gender: reg.gender,
     fee: reg.fee,
     feeLabel: reg.feeLabel,
     sectionConference: reg.sectionConference,
     arrivalDate: reg.arrivalDate,
     departureDate: reg.departureDate,
     programPreference: reg.programPreference,
-    paymentOption: reg.paymentOption,
+    paymentOption: reg.paymentOption || 'pay_now',
     status: reg.status,
     createdAt: reg.createdAt,
     paymentState: state,
@@ -91,7 +107,7 @@ const setSessionCookie = (res, token, expiresAt) => {
     secure: isSecureCookie,
     sameSite: 'Lax',
     expires: expiresAt,
-    path: '/',
+    path: '/api/registration-access',
   })
 }
 
@@ -99,7 +115,7 @@ const setSessionCookie = (res, token, expiresAt) => {
  * POST /api/registration-access/otp/request
  * Body: { email }
  * Always returns the same generic response so this endpoint cannot leak whether an
- * email is registered. An OTP is emailed only when a registration exists.
+ * email is registered. An 8-digit OTP is emailed only when a registration exists.
  */
 router.post('/otp/request', async (req, res) => {
   if (!isDBConnected()) {
@@ -133,10 +149,10 @@ router.post('/otp/request', async (req, res) => {
   // Only one active code per email at a time.
   await RegistrationOtp.deleteMany({ email, usedAt: null })
 
-  const otp = generateOtp(6)
+  const otp = generateOtp(8)
   await RegistrationOtp.create({
     email,
-    codeHash: hashValue(otp),
+    codeHash: hmacValue(otp, OTP_PEPPER),
     expiresAt: new Date(Date.now() + OTP_TTL_MS),
     attemptCount: 0,
   })
@@ -158,10 +174,12 @@ router.post('/otp/request', async (req, res) => {
 
 /**
  * POST /api/registration-access/otp/verify
- * Body: { email, otp }
- * Validates a single-use 6-digit code (10-min expiry, max 5 attempts). On success,
- * creates a 20-minute attendee session, sets it as an HttpOnly cookie, and returns
- * only { success, expiresAt } (the token is never returned in the body).
+ * Body: { email, code }
+ * Validates a single-use 8-digit code (10-min expiry, max 5 attempts). All OTP
+ * validity failures return the same generic response. On success, revokes any
+ * existing attendee sessions for the email, creates a fresh 20-minute session,
+ * and sets it as an HttpOnly cookie scoped to /api/registration-access.
+ * Only { success, expiresAt } is returned — the token never leaves the cookie.
  */
 router.post('/otp/verify', async (req, res) => {
   if (!isDBConnected()) {
@@ -169,10 +187,10 @@ router.post('/otp/verify', async (req, res) => {
   }
 
   const email = normalizeEmail(req.body?.email)
-  const otp = String(req.body?.otp || '').trim()
+  const code = String(req.body?.code || '').trim()
 
-  if (!isValidEmail(email) || !/^\d{6}$/.test(otp)) {
-    return res.status(400).json({ success: false, message: 'Enter the 6-digit code sent to your email.' })
+  if (!isValidEmail(email) || !/^\d{8}$/.test(code)) {
+    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
   }
 
   const verifyLimit = rateLimitHit(`otp:ver:${email}`, 5, 15 * 60 * 1000)
@@ -181,33 +199,31 @@ router.post('/otp/verify', async (req, res) => {
   }
 
   const record = await RegistrationOtp.findOne({ email }).sort({ createdAt: -1 })
-  if (!record) {
-    return res.status(400).json({ success: false, message: 'No active code found. Please request a new one.' })
-  }
-
-  if (record.usedAt) {
-    return res.status(400).json({ success: false, message: 'This code has already been used.' })
-  }
-  if (record.expiresAt.getTime() <= Date.now()) {
-    await RegistrationOtp.deleteOne({ _id: record._id })
-    return res.status(400).json({ success: false, message: 'This code has expired. Please request a new one.' })
+  if (!record || record.usedAt || record.expiresAt.getTime() <= Date.now()) {
+    if (record && record.expiresAt.getTime() <= Date.now()) {
+      await RegistrationOtp.deleteOne({ _id: record._id })
+    }
+    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
   }
 
   if (record.attemptCount >= OTP_MAX_ATTEMPTS) {
-    return res.status(429).json({ success: false, message: 'Too many incorrect attempts. Please request a new code.' })
+    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
   }
 
-  if (!verifyHash(otp, record.codeHash)) {
+  if (!verifyHash(code, record.codeHash, OTP_PEPPER)) {
     await RegistrationOtp.updateOne({ _id: record._id }, { $inc: { attemptCount: 1 } })
-    return res.status(400).json({ success: false, message: 'Incorrect code. Please try again.' })
+    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
   }
 
   // Single-use: remove the code so it cannot be reused.
   await RegistrationOtp.deleteOne({ _id: record._id })
 
+  // A new session supersedes any previous one for this email.
+  await AttendeeSession.deleteMany({ email })
+
   const token = generateSessionToken()
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
-  await AttendeeSession.create({ email, tokenHash: hashValue(token), expiresAt })
+  await AttendeeSession.create({ email, tokenHash: hmacValue(token, TOKEN_PEPPER), expiresAt })
   setSessionCookie(res, token, expiresAt)
 
   return res.json({ success: true, message: 'Verified successfully.', expiresAt })
@@ -218,13 +234,12 @@ router.post('/otp/verify', async (req, res) => {
  * Requires an attendee session. Returns the attendee's registrations with derived
  * paymentState + canUploadPaymentProof, exposing only public fields.
  */
-router.get('/registrations', requireAttendee, async (_req, res) => {
+router.get('/registrations', requireAttendee, async (req, res) => {
   if (!isDBConnected()) {
     return res.status(503).json({ success: false, message: 'Service unavailable. Try again later.' })
   }
 
-  const email = _req.attendee.email
-  const items = await Registration.find({ email })
+  const items = await Registration.find({ email: req.attendee.email })
     .sort({ createdAt: -1 })
     .select(PUBLIC_FIELDS)
     .lean()
@@ -235,8 +250,9 @@ router.get('/registrations', requireAttendee, async (_req, res) => {
 /**
  * POST /api/registration-access/registrations/:id/payment-proof
  * Requires an attendee session. Attach (or replace) payment proof for a registration
- * owned by the attendee, but only while its state is not_submitted or rejected.
+ * owned by the attendee, allowed only while its state is not_submitted or rejected.
  * On upload the registration becomes pay_now + pending and admin is notified.
+ * The old screenshot is deleted only after the DB update succeeds.
  */
 router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('paymentScreenshot'), async (req, res) => {
   if (!isDBConnected()) {
@@ -251,22 +267,26 @@ router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('
   try {
     const reg = await Registration.findOne({ _id: req.params.id, email: req.attendee.email })
     if (!reg) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {})
       return res.status(404).json({ success: false, message: 'Registration not found.' })
     }
 
     const state = paymentState(reg)
     if (!canUploadPaymentProof(state)) {
-      return res.status(400).json({
-        success: false,
-        errors: [`Payment proof cannot be changed while your registration is ${state.replace('_', ' ')}.`],
-      })
+      let message
+      if (state === 'under_review') {
+        message = { success: false, paymentState: 'under_review', message: 'Your payment proof is already under review.' }
+      } else if (state === 'verified') {
+        message = { success: false, paymentState: 'verified', message: 'Your payment has already been verified.' }
+      } else {
+        message = { success: false, paymentState: state, message: 'Payment proof cannot be changed at this time.' }
+      }
+      if (req.file?.path) fs.unlink(req.file.path, () => {})
+      return res.status(409).json(message)
     }
 
-    // Replace an older rejected proof file (safe cleanup, never fails the request).
+    // Persist the new screenshot first; only delete the old one after success.
     const oldPath = reg.paymentScreenshot?.path
-    if (oldPath && oldPath !== req.file.path && fs.existsSync(oldPath)) {
-      fs.unlink(oldPath, () => {})
-    }
 
     const updated = await Registration.findByIdAndUpdate(
       reg._id,
@@ -285,27 +305,30 @@ router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('
       { new: true },
     ).select(PUBLIC_FIELDS).lean()
 
+    if (oldPath && oldPath !== req.file.path && fs.existsSync(oldPath)) {
+      fs.unlink(oldPath, () => {})
+    }
+
     // Notify admin; a send failure must not undo the successful upload.
     try {
-      const recipient = updated
       await sendAdminRegistrationNotification({
-        fullName: recipient.fullName,
-        gender: recipient.gender,
+        fullName: updated.fullName,
+        gender: updated.gender,
         phone: '(hidden)', // attendee proof-upload path does not expose full contact fields
-        email: recipient.email,
+        email: updated.email,
         streetAddress: '',
         streetAddress2: '',
         city: '',
         state: '',
         postalCode: '',
-        sectionConference: recipient.sectionConference,
+        sectionConference: updated.sectionConference,
         occupation: '',
-        fee: recipient.fee,
-        feeLabel: recipient.feeLabel,
+        fee: updated.fee,
+        feeLabel: updated.feeLabel,
         paymentOption: 'pay_now',
-        arrivalDate: recipient.arrivalDate,
-        departureDate: recipient.departureDate,
-        programPreference: recipient.programPreference,
+        arrivalDate: updated.arrivalDate,
+        departureDate: updated.departureDate,
+        programPreference: updated.programPreference,
         howDidYouKnow: '',
         pastAttendance: '',
         emergencyContactName: '',
