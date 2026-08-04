@@ -74,6 +74,41 @@ function formatRegistrationHtml(data) {
   `
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function formatPaymentProofHtml({ registrationId, fullName, email, previousPaymentState }) {
+  const isReplacement = previousPaymentState === 'rejected'
+  const submissionNote = isReplacement
+    ? 'A replacement payment proof was submitted after rejection.'
+    : 'A new payment proof was submitted for review.'
+
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#0b0e37,#e1137b);padding:28px;border-radius:12px 12px 0 0;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">Payment Proof Submitted</h1>
+        <p style="color:#ffc107;margin:8px 0 0;font-size:14px;">Indian Youth Conference 2026</p>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;">
+        <p style="color:#4a5568;line-height:1.6;margin-top:0;">${submissionNote}</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:600;width:180px;">Attendee</td><td style="padding:10px 14px;border-bottom:1px solid #eee;">${escapeHtml(fullName)}</td></tr>
+          <tr><td style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:600;">Email</td><td style="padding:10px 14px;border-bottom:1px solid #eee;">${escapeHtml(email)}</td></tr>
+          <tr><td style="padding:10px 14px;border-bottom:1px solid #eee;font-weight:600;">Registration ID</td><td style="padding:10px 14px;border-bottom:1px solid #eee;">${escapeHtml(registrationId)}</td></tr>
+          <tr><td style="padding:10px 14px;font-weight:600;">Previous payment state</td><td style="padding:10px 14px;">${escapeHtml(previousPaymentState)}</td></tr>
+        </table>
+        <p style="color:#4a5568;line-height:1.6;margin-bottom:0;">The payment proof is attached to this email.</p>
+      </div>
+    </div>
+  `
+}
+
 function formatVerifiedHtml(data) {
   return `
     <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;">
@@ -178,6 +213,32 @@ export async function sendAdminRegistrationNotification(data) {
     subject,
     html: formatRegistrationHtml(data),
     attachments,
+  })
+}
+
+/** Notify admin when an attendee submits or replaces payment proof. */
+export async function sendAdminPaymentProofNotification({
+  registrationId,
+  fullName,
+  email,
+  previousPaymentState,
+  paymentScreenshot,
+}) {
+  if (!paymentScreenshot?.path) {
+    throw new Error('Payment proof attachment is required')
+  }
+
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER
+  await sendMail({
+    to: adminEmail,
+    replyTo: email,
+    subject: 'IYC 2026 — Payment Proof Submitted',
+    html: formatPaymentProofHtml({ registrationId, fullName, email, previousPaymentState }),
+    attachments: [{
+      filename: paymentScreenshot.filename,
+      path: paymentScreenshot.path,
+      contentType: paymentScreenshot.mimetype,
+    }],
   })
 }
 

@@ -10,13 +10,14 @@ import { isDBConnected } from '../db.js'
 import { requireAttendee, setAttendeeSessionCookie } from '../middleware/attendeeAuth.js'
 import {
   generateOtp,
+  generatePaymentProofFilename,
   generateSessionToken,
   hmacValue,
   verifyHash,
 } from '../lib/crypto.js'
 import { paymentState, canUploadPaymentProof } from '../lib/paymentState.js'
 import { rateLimitHit } from '../lib/rateLimit.js'
-import { sendOtpEmail, sendAdminRegistrationNotification } from '../mailer.js'
+import { sendOtpEmail, sendAdminPaymentProofNotification } from '../mailer.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const uploadsDir = path.join(__dirname, '..', 'uploads')
@@ -25,9 +26,11 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
   filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
-    const ext = path.extname(file.originalname) || '.jpg'
-    cb(null, `payment-${unique}${ext}`)
+    try {
+      cb(null, generatePaymentProofFilename(file.mimetype))
+    } catch (err) {
+      cb(err)
+    }
   },
 })
 
@@ -343,8 +346,19 @@ router.post('/registrations/:id/payment-proof', requireAttendee, handlePaymentPr
     // Persist the new screenshot first; only delete the old one after success.
     const oldPath = reg.paymentScreenshot?.path
 
-    const updated = await Registration.findByIdAndUpdate(
-      reg._id,
+    const updated = await Registration.findOneAndUpdate(
+      {
+        _id: reg._id,
+        email: req.attendee.email,
+        $or: [
+          { status: 'rejected' },
+          {
+            status: 'pending',
+            'paymentScreenshot.filename': { $in: [null, ''] },
+            'paymentScreenshot.path': { $in: [null, ''] },
+          },
+        ],
+      },
       {
         $set: {
           paymentOption: 'pay_now',
@@ -359,6 +373,40 @@ router.post('/registrations/:id/payment-proof', requireAttendee, handlePaymentPr
       },
       { new: true },
     ).select(PUBLIC_FIELDS).lean()
+
+    if (!updated) {
+      await removeUploadedFile(req.file)
+
+      const latest = await Registration.findOne({ _id: req.params.id, email: req.attendee.email })
+        .select('status paymentScreenshot')
+        .lean()
+
+      if (!latest) {
+        return res.status(404).json({ success: false, message: 'Registration not found.' })
+      }
+
+      const latestState = paymentState(latest)
+      if (latestState === 'verified') {
+        return res.status(409).json({
+          success: false,
+          paymentState: 'verified',
+          message: 'Your payment has already been verified.',
+        })
+      }
+      if (latestState === 'under_review') {
+        return res.status(409).json({
+          success: false,
+          paymentState: 'under_review',
+          message: 'Your payment proof is already under review.',
+        })
+      }
+      return res.status(409).json({
+        success: false,
+        paymentState: latestState,
+        message: 'Payment proof can no longer be changed. Please refresh and try again.',
+      })
+    }
+
     uploadPersisted = true
 
     if (oldPath && oldPath !== req.file.path && fs.existsSync(oldPath)) {
@@ -366,41 +414,27 @@ router.post('/registrations/:id/payment-proof', requireAttendee, handlePaymentPr
     }
 
     // Notify admin; a send failure must not undo the successful upload.
+    let notificationWarning
     try {
-      await sendAdminRegistrationNotification({
+      await sendAdminPaymentProofNotification({
+        registrationId: String(updated._id),
         fullName: updated.fullName,
-        gender: updated.gender,
-        phone: '(hidden)', // attendee proof-upload path does not expose full contact fields
         email: updated.email,
-        streetAddress: '',
-        streetAddress2: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        sectionConference: updated.sectionConference,
-        occupation: '',
-        fee: updated.fee,
-        feeLabel: updated.feeLabel,
-        paymentOption: 'pay_now',
-        arrivalDate: updated.arrivalDate,
-        departureDate: updated.departureDate,
-        programPreference: updated.programPreference,
-        howDidYouKnow: '',
-        pastAttendance: '',
-        emergencyContactName: '',
-        emergencyContactNumber: '',
-        paymentScreenshot: {
-          path: req.file.path,
-          filename: req.file.filename,
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype,
-        },
+        previousPaymentState: state,
+        paymentScreenshot: updated.paymentScreenshot,
       })
     } catch (emailErr) {
       console.error('Proof-upload admin notification failed (upload saved):', emailErr.message)
+      notificationWarning = 'Payment proof was saved, but the admin notification could not be sent.'
     }
 
-    return res.json({ success: true, message: 'Payment proof submitted. Our team will review it.', item: toAttendeeView(updated) })
+    const response = {
+      success: true,
+      message: 'Payment proof submitted for review.',
+      item: toAttendeeView(updated),
+    }
+    if (notificationWarning) response.warning = notificationWarning
+    return res.json(response)
   } catch (err) {
     if (!uploadPersisted) await removeUploadedFile(req.file)
     console.error('Payment proof upload error:', err.message)

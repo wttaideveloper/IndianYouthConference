@@ -11,6 +11,21 @@ export function generateSessionToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString('base64url')
 }
 
+/** Generate a storage filename from a trusted MIME type, never from the original name. */
+export function generatePaymentProofFilename(mimetype) {
+  const extensions = {
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+  }
+  const extension = extensions[mimetype]
+
+  if (!extension) throw new Error('Unsupported payment-proof MIME type')
+
+  return `${crypto.randomBytes(32).toString('hex')}${extension}`
+}
+
 /**
  * HMAC-SHA256 hex of a value keyed by a server-side pepper — used so OTPs and
  * session tokens are never stored in plaintext and are pepper-protected.
