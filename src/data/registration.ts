@@ -10,6 +10,12 @@ export const REGISTRATION_FEES = {
 
 
 
+export const PAYMENT_OPTIONS = ['pay_now', 'pay_later'] as const
+
+export type PaymentOption = (typeof PAYMENT_OPTIONS)[number]
+
+
+
 export const OCCUPATIONS = [
 
   'Student',

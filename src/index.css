@@ -258,3 +258,13 @@ body {
 .input-modern::placeholder {
   color: #a0a8be;
 }
+
+/* Hide native browser password reveal/clear icons (avoid double icon) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+}

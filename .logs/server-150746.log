@@ -1,0 +1,8 @@
+
+> indianyouthconference@1.0.0 dev:server
+> node --env-file=.env --watch server/index.js
+
+Restarting 'server/index.js'
+MongoDB connected
+Server running on http://localhost:3001
+Admin login enabled (user: clientadmin)

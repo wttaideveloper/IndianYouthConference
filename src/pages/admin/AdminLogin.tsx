@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
-import { Lock, User, Loader2, AlertCircle, Shield, ArrowLeft } from 'lucide-react'
+import { Lock, User, Loader2, AlertCircle, Shield, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { login, isLoggedIn } from '../../lib/adminApi'
 import { EVENT } from '../../data/content'
 
@@ -8,6 +8,7 @@ export default function AdminLogin() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -87,7 +88,7 @@ export default function AdminLogin() {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="input-modern pl-10 bg-gray-50/50"
+                    className="input-modern pl-10! bg-gray-50/40"
                     placeholder="Enter username"
                     autoComplete="username"
                   />
@@ -98,14 +99,25 @@ export default function AdminLogin() {
                 <div className="relative">
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="input-modern pl-10 bg-gray-50/50"
+                    className="input-modern pl-10! pr-11! bg-gray-50/40"
                     placeholder="Enter password"
                     autoComplete="current-password"
                   />
+                  {password.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-primary transition-colors"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                  )}
                 </div>
               </div>
               <button

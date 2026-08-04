@@ -87,6 +87,7 @@ export interface Registration {
   emergencyContactNumber: string
   fee: number
   feeLabel: string
+  paymentOption?: 'pay_now' | 'pay_later'
   status: 'pending' | 'verified' | 'rejected'
   adminNotes?: string
   emailSent?: boolean
@@ -99,6 +100,12 @@ export interface Registration {
     mimetype?: string
     hasFile?: boolean
   }
+}
+
+export function paymentStatusLabel(status: string, hasScreenshot: boolean) {
+  if (status === 'verified') return 'Paid / Verified'
+  if (status === 'rejected') return 'Payment Rejected'
+  return hasScreenshot ? 'Payment Under Review' : 'Payment Pending'
 }
 
 function toQuery(filters: RegistrationFilters) {

@@ -65,6 +65,7 @@ const CSV_HEADERS = [
   'ID',
   'Submitted At',
   'Status',
+  'Payment Option',
   'First Name',
   'Last Name',
   'Gender',
@@ -153,6 +154,7 @@ router.get('/registrations/export', async (req, res) => {
         r._id,
         r.createdAt ? new Date(r.createdAt).toISOString() : '',
         r.status,
+        r.paymentOption || 'pay_now',
         r.firstName,
         r.lastName,
         r.gender,
@@ -239,6 +241,18 @@ router.patch('/registrations/:id', async (req, res) => {
   const existing = await Registration.findById(req.params.id)
   if (!existing) {
     return res.status(404).json({ success: false, message: 'Registration not found' })
+  }
+
+  if (['verified', 'rejected'].includes(req.body.status)) {
+    const hasScreenshot = Boolean(
+      existing.paymentScreenshot?.path && fs.existsSync(existing.paymentScreenshot.path),
+    )
+    if (!hasScreenshot) {
+      return res.status(400).json({
+        success: false,
+        errors: ['Cannot verify or reject — no payment screenshot exists for this registration.'],
+      })
+    }
   }
 
   const merged = {

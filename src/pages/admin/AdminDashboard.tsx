@@ -23,6 +23,7 @@ import {
   fetchRegistrations,
   fetchStats,
   exportCsv,
+  paymentStatusLabel,
   type Registration,
   type RegistrationFilters,
 } from '../../lib/adminApi'
@@ -335,6 +336,7 @@ export default function AdminDashboard() {
               <tbody className="divide-y divide-gray-50">
                 {items.map((item) => {
                   const st = STATUS_CONFIG[item.status]
+                  const hasScreenshot = Boolean(item.paymentScreenshot?.filename)
                   return (
                     <tr
                       key={item._id}
@@ -367,7 +369,7 @@ export default function AdminDashboard() {
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ${st.badge}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                          {st.label}
+                          {paymentStatusLabel(item.status, hasScreenshot)}
                         </span>
                       </td>
                       <td className="px-5 py-4 hidden sm:table-cell text-xs text-gray-400">

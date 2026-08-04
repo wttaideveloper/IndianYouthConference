@@ -67,6 +67,9 @@ export function validateRegistrationFields(body, { partial = false } = {}) {
   if (body.status !== undefined && !STATUSES.includes(body.status)) {
     errors.push('Invalid status')
   }
+  if (body.paymentOption !== undefined && !['pay_now', 'pay_later'].includes(body.paymentOption)) {
+    errors.push('Invalid payment option')
+  }
 
   return errors
 }
@@ -79,7 +82,7 @@ export function buildRegistrationUpdate(body) {
     'streetAddress', 'streetAddress2', 'city', 'state', 'postalCode',
     'sectionConference', 'occupation', 'arrivalDate', 'departureDate',
     'programPreference', 'howDidYouKnow', 'pastAttendance',
-    'emergencyContactName', 'emergencyContactNumber', 'status', 'adminNotes',
+    'emergencyContactName', 'emergencyContactNumber', 'status', 'paymentOption', 'adminNotes',
   ]
 
   for (const field of stringFields) {

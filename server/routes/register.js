@@ -59,7 +59,7 @@ function calculateFee(occupation, programPreference) {
 
 function validateBody(body) {
   const errors = []
-
+  if (!['pay_now', 'pay_later'].includes(body.paymentOption)) errors.push('Please choose a payment option')
   if (!body.firstName?.trim()) errors.push('First name is required')
   if (!body.lastName?.trim()) errors.push('Last name is required')
   if (!GENDERS.includes(body.gender)) errors.push('Please select a valid gender')
@@ -93,19 +93,28 @@ function validateBody(body) {
 }
 
 router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        errors: ['Payment screenshot is required. Please attach your payment proof.'],
-      })
-    }
+  try{
+  const paymentOption = req.body.paymentOption === 'pay_later' ? 'pay_later' : 'pay_now'
 
-    const errors = validateBody(req.body)
-    if (errors.length > 0) {
-      fs.unlink(req.file.path, () => {})
-      return res.status(400).json({ success: false, errors })
-    }
+  if (paymentOption === 'pay_now' && !req.file) {
+    return res.status(400).json({
+      success: false,
+      errors: ['Payment screenshot is required. Please attach your payment proof.'],
+    })
+  }
+  if (paymentOption === 'pay_later' && req.file) {
+    fs.unlink(req.file.path, () => {})
+    return res.status(400).json({
+      success: false,
+      errors: ['Pay Later does not require a payment screenshot. Please clear it and resubmit.'],
+    })
+  }
+
+  const errors = validateBody(req.body)
+  if (errors.length > 0) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {})
+    return res.status(400).json({ success: false, errors })
+  }
 
     const { fee, label: feeLabel } = calculateFee(
       req.body.occupation,
@@ -135,31 +144,28 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       emergencyContactNumber: req.body.emergencyContactNumber.trim(),
       fee,
       feeLabel,
-      paymentScreenshot: {
-        path: req.file.path,
-        filename: req.file.filename,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-      },
+      paymentOption,
+      ...(req.file
+        ? {
+            paymentScreenshot: {
+              path: req.file.path,
+              filename: req.file.filename,
+              originalname: req.file.originalname,
+              mimetype: req.file.mimetype,
+            },
+          }
+        : {}),
     }
 
     if (!isDBConnected()) {
-      fs.unlink(req.file.path, () => {})
+      if (req.file?.path) fs.unlink(req.file.path, () => {})
       return res.status(503).json({
         success: false,
         message: 'Registration service unavailable. Database is not connected.',
       })
     }
 
-    const saved = await Registration.create({
-      ...data,
-      paymentScreenshot: {
-        filename: data.paymentScreenshot.filename,
-        originalname: data.paymentScreenshot.originalname,
-        mimetype: data.paymentScreenshot.mimetype,
-        path: data.paymentScreenshot.path,
-      },
-    })
+    const saved = await Registration.create(data)
 
     let emailSent = false
     try {
@@ -170,13 +176,14 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       console.error('Admin notification email failed (registration saved):', emailErr.message)
     }
 
-    res.json({
-      success: true,
-      message: emailSent
-        ? 'Registration submitted successfully. You will receive a confirmation email once your payment is verified by our team.'
-        : 'Registration submitted successfully. Our team will review your payment and contact you shortly.',
-      id: saved._id,
-    })
+    const successMessage =
+      paymentOption === 'pay_later'
+        ? 'Registration submitted successfully. Please complete your payment soon — you will be confirmed once we receive your payment proof.'
+        : emailSent
+          ? 'Registration submitted successfully. You will receive a confirmation email once your payment is verified by our team.'
+          : 'Registration submitted successfully. Our team will review your payment and contact you shortly.'
+
+    res.json({ success: true, message: successMessage, id: saved._id })
   } catch (err) {
     if (req.file?.path) fs.unlink(req.file.path, () => {})
     console.error('Registration error:', err.message)

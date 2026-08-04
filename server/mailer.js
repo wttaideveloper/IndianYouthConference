@@ -24,6 +24,10 @@ function getTransporter() {
 }
 
 function formatRegistrationHtml(data) {
+  const isPayLater = data.paymentOption === 'pay_later'
+  const intro = isPayLater
+    ? 'A new registration has been submitted with <strong>Pay Later</strong>. No payment screenshot is attached — please follow up with the registrant for payment.'
+    : 'A new registration has been submitted. Please review the payment screenshot in the admin portal and verify the registration.'
   const rows = [
     ['Full Name', data.fullName],
     ['Gender', data.gender],
@@ -37,6 +41,7 @@ function formatRegistrationHtml(data) {
     ['Section / Conference', data.sectionConference],
     ['Occupation', data.occupation],
     ['Registration Fee', `₹${data.fee} (${data.feeLabel})`],
+    ['Payment Option', isPayLater ? 'Pay Later' : 'Pay Now'],
     ['Arrival Date', data.arrivalDate],
     ['Departure Date', data.departureDate],
     ['Program Preference', data.programPreference],
@@ -44,7 +49,7 @@ function formatRegistrationHtml(data) {
     ['Attended IYC before', data.pastAttendance],
     ['Emergency Contact', data.emergencyContactName],
     ['Emergency Number', data.emergencyContactNumber],
-    ['Payment Screenshot', 'Attached to this email'],
+    ['Payment Screenshot', isPayLater ? 'Not provided (Pay Later)' : 'Attached to this email'],
     ['Submitted At', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })],
   ]
 
@@ -62,7 +67,7 @@ function formatRegistrationHtml(data) {
         <p style="color:#ffc107;margin:8px 0 0;font-size:14px;">Indian Youth Conference — Mount Zion Campus, Pudukkottai</p>
       </div>
       <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;">
-        <p style="color:#4a5568;line-height:1.6;margin-top:0;">A new registration has been submitted. Please review the payment screenshot in the admin portal and verify the registration.</p>
+        <p style="color:#4a5568;line-height:1.6;margin-top:0;">${intro}</p>
         <table style="width:100%;border-collapse:collapse;">${tableRows}</table>
       </div>
     </div>
@@ -164,10 +169,13 @@ export async function sendAdminRegistrationNotification(data) {
       }]
     : []
 
+  const isPayLater = data.paymentOption === 'pay_later'
+  const subject = `[IYC] New Registration: ${data.fullName} — ₹${data.fee}${isPayLater ? ' (Pay Later)' : ''}`
+
   await sendMail({
     to: adminEmail,
     replyTo: data.email,
-    subject: `[IYC] New Registration: ${data.fullName} — ₹${data.fee}`,
+    subject,
     html: formatRegistrationHtml(data),
     attachments,
   })

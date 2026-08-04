@@ -56,6 +56,7 @@ const INITIAL: FormData = {
   emergencyContactName: '',
   emergencyContactNumber: '',
 }
+const stripPhone = (v: string) => v.replace(/[^\d\s+\-()]/g, '')
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -77,12 +78,24 @@ function FormHeader() {
   )
 }
 
+function FieldError({ error }: { error?: string }) {
+  if (!error) return null
+  return (
+    <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+      <AlertCircle size={12} className="shrink-0" />
+      {error}
+    </p>
+  )
+}
+
 export default function RegisterForm() {
   const [form, setForm] = useState<FormData>(INITIAL)
   const [screenshot, setScreenshot] = useState<File | null>(null)
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
   const [screenshotError, setScreenshotError] = useState('')
   const [errors, setErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [paymentOption, setPaymentOption] = useState<'pay_now' | 'pay_later'>('pay_now')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
@@ -97,13 +110,41 @@ export default function RegisterForm() {
   const update = (field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
     setErrors([])
+    setFieldErrors((prev) => {
+      if (!(field in prev)) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
+
+  const handlePhoneChange =(field: 'phone' | 'emergencyContactNumber') =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const cleaned = stripPhone(e.target.value)
+      if (cleaned.replace(/\D/g, '').length > 12) {
+        e.target.value = form[field]
+        return
+      }
+      if (cleaned !== e.target.value) e.target.value = cleaned
+      update(field, cleaned)
+    }
 
   const handleScreenshotChange = (file: File | null, preview: string | null) => {
     setScreenshot(file)
     setScreenshotPreview(preview)
     setScreenshotError('')
     setErrors([])
+    setFieldErrors({})
+  }
+
+  const handlePaymentOptionChange = (option: 'pay_now' | 'pay_later') => {
+    setPaymentOption(option)
+    setScreenshotError('')
+    if (option === 'pay_later' && (screenshot || screenshotPreview)) {
+      if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+      setScreenshot(null)
+      setScreenshotPreview(null)
+    }
   }
 
   const resetForm = () => {
@@ -113,7 +154,32 @@ export default function RegisterForm() {
     setScreenshotPreview(null)
     setScreenshotError('')
     setErrors([])
+    setFieldErrors({})
     setMessage('')
+  }
+
+  const validateForm = (): Record<string, string> => {
+    const errs: Record<string, string> = {}
+    if (!form.firstName.trim()) errs.firstName = 'First name is required'
+    if (!form.lastName.trim()) errs.lastName = 'Last name is required'
+    if (!form.gender) errs.gender = 'Please select a gender'
+    if (!form.phone.trim()) errs.phone = 'A valid phone number is required'
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      errs.email = 'A valid email is required'
+    }
+    if (!form.streetAddress.trim()) errs.streetAddress = 'Street address is required'
+    if (!form.city.trim()) errs.city = 'City is required'
+    if (!form.state.trim()) errs.state = 'State is required'
+    if (!form.postalCode.trim()) errs.postalCode = 'Postal / zip code is required'
+    if (!form.sectionConference.trim()) errs.sectionConference = 'Section / Conference is required'
+    if (!form.occupation) errs.occupation = 'Please select an occupation'
+    if (!form.arrivalDate) errs.arrivalDate = 'Expected date of arrival is required'
+    if (!form.departureDate) errs.departureDate = 'Expected date of departure is required'
+    if (!form.howDidYouKnow) errs.howDidYouKnow = 'Please select how you heard about IYC'
+    if (!form.pastAttendance) errs.pastAttendance = 'Please indicate if you attended IYC before'
+    if (!form.emergencyContactName.trim()) errs.emergencyContactName = 'Emergency contact name is required'
+    if (!form.emergencyContactNumber.trim()) errs.emergencyContactNumber = 'Emergency contact number is required'
+    return errs
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -122,8 +188,15 @@ export default function RegisterForm() {
     setMessage('')
     setScreenshotError('')
 
-    if (!screenshot) {
-      setScreenshotError('Please attach a screenshot of your payment before submitting.')
+    const validationErrors = validateForm()
+    const screenshotMissing = paymentOption === 'pay_now' && !screenshot
+    setScreenshotError(
+      screenshotMissing ? 'Please attach a screenshot of your payment before submitting.' : '',
+    )
+
+    if (Object.keys(validationErrors).length > 0 || screenshotMissing) {
+      if (Object.keys(validationErrors).length > 0) setFieldErrors(validationErrors)
+      setStatus('error')
       return
     }
 
@@ -135,7 +208,8 @@ export default function RegisterForm() {
       body.append('fee', String(feeInfo.fee))
       body.append('feeLabel', feeInfo.label)
     }
-    body.append('paymentScreenshot', screenshot)
+    body.append('paymentOption', paymentOption)
+    if (paymentOption === 'pay_now' && screenshot) body.append('paymentScreenshot', screenshot)
 
     try {
       const res = await fetch('/api/register', { method: 'POST', body })
@@ -159,27 +233,8 @@ export default function RegisterForm() {
     }
   }
 
-  if (status === 'success') {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-12 px-6"
-      >
-        <div className="w-20 h-20 rounded-3xl bg-green-50 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="text-green-500" size={40} />
-        </div>
-        <h3 className="font-display text-2xl font-bold text-navy mb-3">Registration Submitted!</h3>
-        <p className="text-gray-500 max-w-md mx-auto mb-8 text-sm">{message}</p>
-        <Button onClick={() => { resetForm(); setStatus('idle') }} variant="outline">
-          Submit Another Registration
-        </Button>
-      </motion.div>
-    )
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-8">
       <FormHeader />
 
       {(errors.length > 0 || (status === 'error' && message)) && (
@@ -198,8 +253,14 @@ export default function RegisterForm() {
       <div>
         <SectionLabel>Name</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input type="text" placeholder="First Name *" required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} className="input-modern" />
-          <input type="text" placeholder="Last Name *" required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} className="input-modern" />
+          <div>
+            <input type="text" placeholder="First Name *" required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.firstName} />
+          </div>
+          <div>
+            <input type="text" placeholder="Last Name *" required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.lastName} />
+          </div>
         </div>
       </div>
 
@@ -212,10 +273,12 @@ export default function RegisterForm() {
               <option value="">Please Select</option>
               {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
+            <FieldError error={fieldErrors.gender} />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Phone Number *</label>
-            <input type="tel" placeholder="+91 XXXXXXXXXX" required value={form.phone} onChange={(e) => update('phone', e.target.value)} className="input-modern" />
+            <input type="tel" inputMode="numeric" placeholder="+91 XXXXXXXXXX" required value={form.phone} onChange={handlePhoneChange('phone')} className="input-modern" />
+            <FieldError error={fieldErrors.phone} />
           </div>
         </div>
       </div>
@@ -224,12 +287,24 @@ export default function RegisterForm() {
       <div>
         <SectionLabel>Address</SectionLabel>
         <div className="grid grid-cols-1 gap-4">
-          <input type="text" placeholder="Street Address *" required value={form.streetAddress} onChange={(e) => update('streetAddress', e.target.value)} className="input-modern" />
+          <div>
+            <input type="text" placeholder="Street Address Line 1 *" required value={form.streetAddress} onChange={(e) => update('streetAddress', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.streetAddress} />
+          </div>
           <input type="text" placeholder="Street Address Line 2" value={form.streetAddress2} onChange={(e) => update('streetAddress2', e.target.value)} className="input-modern" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <input type="text" placeholder="City *" required value={form.city} onChange={(e) => update('city', e.target.value)} className="input-modern" />
-            <input type="text" placeholder="State / Province *" required value={form.state} onChange={(e) => update('state', e.target.value)} className="input-modern" />
-            <input type="text" placeholder="Postal / Zip Code *" required value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} className="input-modern" />
+            <div>
+              <input type="text" placeholder="City *" required value={form.city} onChange={(e) => update('city', e.target.value)} className="input-modern" />
+              <FieldError error={fieldErrors.city} />
+            </div>
+            <div>
+              <input type="text" placeholder="State / Province *" required value={form.state} onChange={(e) => update('state', e.target.value)} className="input-modern" />
+              <FieldError error={fieldErrors.state} />
+            </div>
+            <div>
+              <input type="text" placeholder="Postal / Zip Code *" required value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} className="input-modern" />
+              <FieldError error={fieldErrors.postalCode} />
+            </div>
           </div>
         </div>
       </div>
@@ -237,7 +312,8 @@ export default function RegisterForm() {
       {/* Email */}
       <div>
         <SectionLabel>E-mail</SectionLabel>
-        <input type="email" placeholder="ex: myname@example.com" required value={form.email} onChange={(e) => update('email', e.target.value)} className="input-modern" />
+        <input type="email" placeholder="ex:myname@example.com*" required value={form.email} onChange={(e) => update('email', e.target.value)} className="input-modern" />
+        <FieldError error={fieldErrors.email} />
       </div>
 
       {/* Section & Occupation */}
@@ -246,6 +322,7 @@ export default function RegisterForm() {
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Section / Conference you are coming from *</label>
             <input type="text" required value={form.sectionConference} onChange={(e) => update('sectionConference', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.sectionConference} />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Occupation *</label>
@@ -253,6 +330,7 @@ export default function RegisterForm() {
               <option value="">Please Select</option>
               {OCCUPATIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+            <FieldError error={fieldErrors.occupation} />
           </div>
         </div>
         {feeInfo && (
@@ -269,10 +347,12 @@ export default function RegisterForm() {
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Arrival *</label>
             <input type="date" required value={form.arrivalDate} onChange={(e) => update('arrivalDate', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.arrivalDate} />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Departure *</label>
             <input type="date" required value={form.departureDate} onChange={(e) => update('departureDate', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.departureDate} />
           </div>
         </div>
       </div>
@@ -311,6 +391,7 @@ export default function RegisterForm() {
               <option value="">Please Select</option>
               {HOW_DID_YOU_KNOW.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+            <FieldError error={fieldErrors.howDidYouKnow} />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Have you attended IYC meetings in the past? *</label>
@@ -318,6 +399,7 @@ export default function RegisterForm() {
               <option value="">Please Select</option>
               {PAST_ATTENDANCE.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+            <FieldError error={fieldErrors.pastAttendance} />
           </div>
         </div>
       </div>
@@ -326,8 +408,14 @@ export default function RegisterForm() {
       <div>
         <SectionLabel>Emergency Contact</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input type="text" placeholder="Emergency Contact Name *" required value={form.emergencyContactName} onChange={(e) => update('emergencyContactName', e.target.value)} className="input-modern" />
-          <input type="tel" placeholder="Emergency Contact Number *" required value={form.emergencyContactNumber} onChange={(e) => update('emergencyContactNumber', e.target.value)} className="input-modern" />
+          <div>
+            <input type="text" placeholder="Emergency Contact Name *" required value={form.emergencyContactName} onChange={(e) => update('emergencyContactName', e.target.value)} className="input-modern" />
+            <FieldError error={fieldErrors.emergencyContactName} />
+          </div>
+          <div>
+            <input type="tel" inputMode="numeric" placeholder="Emergency Contact Number *" required value={form.emergencyContactNumber} onChange={handlePhoneChange('emergencyContactNumber')} className="input-modern" />
+            <FieldError error={fieldErrors.emergencyContactNumber} />
+          </div>
         </div>
       </div>
 
@@ -338,10 +426,28 @@ export default function RegisterForm() {
           fee={feeInfo?.fee}
           screenshot={screenshot}
           preview={screenshotPreview}
+          paymentOption={paymentOption}
+          onPaymentOptionChange={handlePaymentOptionChange}
           onScreenshotChange={handleScreenshotChange}
           error={screenshotError}
         />
       </div>
+
+      {status === 'success' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border border-green-100 rounded-2xl p-4 flex gap-3"
+        >
+          <CheckCircle className="text-green-500 shrink-0 mt-0.5" size={18} />
+          <div className="flex-1">
+            <p className="text-green-700 text-sm font-medium mb-3">{message}</p>
+            <Button onClick={() => { resetForm(); setStatus('idle') }} variant="outline" size="sm">
+              Submit Another Registration
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       <Button type="submit" variant="primary" size="lg" className="w-full gap-2">
         {status === 'loading' ? (

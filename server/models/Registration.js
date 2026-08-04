@@ -34,6 +34,7 @@ const registrationSchema = new mongoose.Schema(
     pastAttendance: { type: String, enum: ['Yes', 'No'], required: true },
     emergencyContactName: { type: String, required: true },
     emergencyContactNumber: { type: String, required: true },
+    paymentOption: { type: String, enum: ['pay_now', 'pay_later'], default: 'pay_now' },
     fee: { type: Number, required: true },
     feeLabel: { type: String, required: true },
     paymentScreenshot: {

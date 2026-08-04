@@ -85,6 +85,8 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageZoom, setImageZoom] = useState(false)
 
+  const hasScreenshot = Boolean(item?.paymentScreenshot?.filename)
+
   const feePreview = useMemo(() => {
     if (!form?.occupation) return null
     return calculateFee(form.occupation, form.programPreference || '')
@@ -373,20 +375,35 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                   <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-5 space-y-4">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Status</p>
                     <div className="grid grid-cols-3 gap-2">
-                      {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => updateForm('status', value)}
-                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
-                            form.status === value ? `${active} ring-2` : `${color} opacity-70 hover:opacity-100`
-                          }`}
-                        >
-                          <Icon size={18} />
-                          {label}
-                        </button>
-                      ))}
+                      {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => {
+                        const locked = !hasScreenshot && value !== 'pending'
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => updateForm('status', value)}
+                            disabled={locked}
+                            title={locked ? 'Cannot verify or reject until a payment screenshot is uploaded' : label}
+                            className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
+                              locked
+                                ? 'opacity-40 cursor-not-allowed'
+                                : form.status === value
+                                  ? `${active} ring-2`
+                                  : `${color} opacity-70 hover:opacity-100`
+                            }`}
+                          >
+                            <Icon size={18} />
+                            {label}
+                          </button>
+                        )
+                      })}
                     </div>
+                    {!hasScreenshot && (
+                      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                        <AlertTriangle size={13} className="shrink-0" />
+                        Cannot verify or reject until a payment screenshot is uploaded.
+                      </p>
+                    )}
                     <Field label="Admin Notes">
                       <textarea
                         value={form.adminNotes}
@@ -462,20 +479,35 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                   <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-5 space-y-4">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Status</p>
                     <div className="grid grid-cols-3 gap-2">
-                      {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => updateForm('status', value)}
-                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
-                            form.status === value ? `${active} ring-2` : `${color} opacity-70 hover:opacity-100`
-                          }`}
-                        >
-                          <Icon size={18} />
-                          {label}
-                        </button>
-                      ))}
+                      {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => {
+                        const locked = !hasScreenshot && value !== 'pending'
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => updateForm('status', value)}
+                            disabled={locked}
+                            title={locked ? 'Cannot verify or reject until a payment screenshot is uploaded' : label}
+                            className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
+                              locked
+                                ? 'opacity-40 cursor-not-allowed'
+                                : form.status === value
+                                  ? `${active} ring-2`
+                                  : `${color} opacity-70 hover:opacity-100`
+                            }`}
+                          >
+                            <Icon size={18} />
+                            {label}
+                          </button>
+                        )
+                      })}
                     </div>
+                    {!hasScreenshot && (
+                      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                        <AlertTriangle size={13} className="shrink-0" />
+                        Cannot verify or reject until a payment screenshot is uploaded.
+                      </p>
+                    )}
                     <Field label="Admin Notes">
                       <textarea
                         value={form.adminNotes}
