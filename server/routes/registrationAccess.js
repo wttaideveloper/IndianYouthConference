@@ -72,6 +72,28 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+async function removeUploadedFile(file) {
+  if (!file?.path) return
+
+  try {
+    await fs.promises.unlink(file.path)
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.error('Failed to remove uploaded payment proof:', err.message)
+    }
+  }
+}
+
+function handlePaymentProofUpload(req, res, next) {
+  upload.single('paymentScreenshot')(req, res, async (err) => {
+    if (!err) return next()
+
+    await removeUploadedFile(req.file)
+    console.error('Payment proof upload rejected:', err.message)
+    return res.status(400).json({ success: false, message: 'Invalid payment screenshot.' })
+  })
+}
+
 /**
  * Fields selected for attendee responses. The attendee view (toAttendeeView) is
  * strictly whitelisted, so gender is selected only for the admin notification
@@ -118,10 +140,6 @@ const setSessionCookie = (res, token, expiresAt) => {
  * email is registered. An 8-digit OTP is emailed only when a registration exists.
  */
 router.post('/otp/request', async (req, res) => {
-  if (!isDBConnected()) {
-    return res.status(503).json({ success: false, message: 'Service unavailable. Try again later.' })
-  }
-
   const email = normalizeEmail(req.body?.email)
   const generic = {
     success: true,
@@ -141,35 +159,50 @@ router.post('/otp/request', async (req, res) => {
     })
   }
 
-  const reg = await Registration.findOne({ email }).select('email fullName fee paymentOption').lean()
-  if (!reg) {
-    return res.json(generic)
-  }
-
-  // Only one active code per email at a time.
-  await RegistrationOtp.deleteMany({ email, usedAt: null })
-
-  const otp = generateOtp(8)
-  await RegistrationOtp.create({
-    email,
-    codeHash: hmacValue(otp, OTP_PEPPER),
-    expiresAt: new Date(Date.now() + OTP_TTL_MS),
-    attemptCount: 0,
-  })
-
   try {
-    await sendOtpEmail({
-      email,
-      otp,
-      fullName: reg.fullName,
-      expiresAt: new Date(Date.now() + OTP_TTL_MS),
-    })
-  } catch (err) {
-    console.error('OTP email failed:', err.message)
-    return res.status(500).json({ success: false, message: 'Could not send the verification code. Please try again.' })
-  }
+    if (!isDBConnected()) {
+      console.error('OTP request skipped: database is unavailable')
+      return res.status(202).json(generic)
+    }
 
-  return res.json(generic)
+    const reg = await Registration.findOne({ email }).select('email fullName fee paymentOption').lean()
+    if (!reg) {
+      return res.status(202).json(generic)
+    }
+
+    // Only one active code per email at a time.
+    await RegistrationOtp.deleteMany({ email, usedAt: null })
+
+    const otp = generateOtp(8)
+    const challenge = await RegistrationOtp.create({
+      email,
+      codeHash: hmacValue(otp, OTP_PEPPER),
+      expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      attemptCount: 0,
+    })
+
+    try {
+      await sendOtpEmail({
+        email,
+        otp,
+        fullName: reg.fullName,
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      })
+    } catch (err) {
+      try {
+        await RegistrationOtp.deleteOne({ _id: challenge._id })
+      } catch (cleanupErr) {
+        console.error('Failed to invalidate undelivered OTP:', cleanupErr.message)
+      }
+
+      console.error('OTP email failed:', err.message)
+    }
+
+    return res.status(202).json(generic)
+  } catch (err) {
+    console.error('OTP request failed:', err.message)
+    return res.status(202).json(generic)
+  }
 })
 
 /**
@@ -198,35 +231,63 @@ router.post('/otp/verify', async (req, res) => {
     return res.status(429).json({ success: false, message: 'Too many attempts. Please try again later.' })
   }
 
-  const record = await RegistrationOtp.findOne({ email }).sort({ createdAt: -1 })
-  if (!record || record.usedAt || record.expiresAt.getTime() <= Date.now()) {
-    if (record && record.expiresAt.getTime() <= Date.now()) {
-      await RegistrationOtp.deleteOne({ _id: record._id })
+  try {
+    const record = await RegistrationOtp.findOne({ email }).sort({ createdAt: -1 })
+    if (!record || record.usedAt || record.expiresAt.getTime() <= Date.now()) {
+      if (record && record.expiresAt.getTime() <= Date.now()) {
+        try {
+          await RegistrationOtp.deleteOne({ _id: record._id })
+        } catch (cleanupErr) {
+          console.error('Failed to remove expired OTP:', cleanupErr.message)
+        }
+      }
+      return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
     }
-    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
+
+    if (record.attemptCount >= OTP_MAX_ATTEMPTS) {
+      return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
+    }
+
+    if (!verifyHash(code, record.codeHash, OTP_PEPPER)) {
+      await RegistrationOtp.updateOne(
+        {
+          _id: record._id,
+          email,
+          usedAt: null,
+          expiresAt: { $gt: new Date() },
+          attemptCount: { $lt: OTP_MAX_ATTEMPTS },
+        },
+        { $inc: { attemptCount: 1 } },
+      )
+      return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
+    }
+
+    const consumed = await RegistrationOtp.findOneAndDelete({
+      _id: record._id,
+      email,
+      codeHash: hmacValue(code, OTP_PEPPER),
+      expiresAt: { $gt: new Date() },
+      usedAt: null,
+      attemptCount: { $lt: OTP_MAX_ATTEMPTS },
+    })
+
+    if (!consumed) {
+      return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
+    }
+
+    // A new session supersedes any previous one for this email.
+    await AttendeeSession.deleteMany({ email })
+
+    const token = generateSessionToken()
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
+    await AttendeeSession.create({ email, tokenHash: hmacValue(token, TOKEN_PEPPER), expiresAt })
+    setSessionCookie(res, token, expiresAt)
+
+    return res.json({ success: true, message: 'Verified successfully.', expiresAt })
+  } catch (err) {
+    console.error('OTP verification failed:', err.message)
+    return res.status(500).json({ success: false, message: 'Failed to verify registration. Please request a new code.' })
   }
-
-  if (record.attemptCount >= OTP_MAX_ATTEMPTS) {
-    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
-  }
-
-  if (!verifyHash(code, record.codeHash, OTP_PEPPER)) {
-    await RegistrationOtp.updateOne({ _id: record._id }, { $inc: { attemptCount: 1 } })
-    return res.status(400).json({ success: false, message: GENERIC_OTP_ERROR })
-  }
-
-  // Single-use: remove the code so it cannot be reused.
-  await RegistrationOtp.deleteOne({ _id: record._id })
-
-  // A new session supersedes any previous one for this email.
-  await AttendeeSession.deleteMany({ email })
-
-  const token = generateSessionToken()
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
-  await AttendeeSession.create({ email, tokenHash: hmacValue(token, TOKEN_PEPPER), expiresAt })
-  setSessionCookie(res, token, expiresAt)
-
-  return res.json({ success: true, message: 'Verified successfully.', expiresAt })
 })
 
 /**
@@ -235,16 +296,21 @@ router.post('/otp/verify', async (req, res) => {
  * paymentState + canUploadPaymentProof, exposing only public fields.
  */
 router.get('/registrations', requireAttendee, async (req, res) => {
-  if (!isDBConnected()) {
-    return res.status(503).json({ success: false, message: 'Service unavailable. Try again later.' })
+  try {
+    if (!isDBConnected()) {
+      return res.status(503).json({ success: false, message: 'Service unavailable. Try again later.' })
+    }
+
+    const items = await Registration.find({ email: req.attendee.email })
+      .sort({ createdAt: -1 })
+      .select(PUBLIC_FIELDS)
+      .lean()
+
+    return res.json({ success: true, items: items.map(toAttendeeView) })
+  } catch (err) {
+    console.error('Attendee registration lookup failed:', err.message)
+    return res.status(500).json({ success: false, message: 'Failed to load registrations. Please try again.' })
   }
-
-  const items = await Registration.find({ email: req.attendee.email })
-    .sort({ createdAt: -1 })
-    .select(PUBLIC_FIELDS)
-    .lean()
-
-  return res.json({ success: true, items: items.map(toAttendeeView) })
 })
 
 /**
@@ -254,20 +320,22 @@ router.get('/registrations', requireAttendee, async (req, res) => {
  * On upload the registration becomes pay_now + pending and admin is notified.
  * The old screenshot is deleted only after the DB update succeeds.
  */
-router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('paymentScreenshot'), async (req, res) => {
-  if (!isDBConnected()) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {})
-    return res.status(503).json({ success: false, message: 'Service unavailable. Try again later.' })
-  }
-
-  if (!req.file) {
-    return res.status(400).json({ success: false, errors: ['Payment screenshot is required.'] })
-  }
+router.post('/registrations/:id/payment-proof', requireAttendee, handlePaymentProofUpload, async (req, res) => {
+  let uploadPersisted = false
 
   try {
+    if (!isDBConnected()) {
+      await removeUploadedFile(req.file)
+      return res.status(503).json({ success: false, message: 'Service unavailable. Try again later.' })
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, errors: ['Payment screenshot is required.'] })
+    }
+
     const reg = await Registration.findOne({ _id: req.params.id, email: req.attendee.email })
     if (!reg) {
-      if (req.file?.path) fs.unlink(req.file.path, () => {})
+      await removeUploadedFile(req.file)
       return res.status(404).json({ success: false, message: 'Registration not found.' })
     }
 
@@ -281,7 +349,7 @@ router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('
       } else {
         message = { success: false, paymentState: state, message: 'Payment proof cannot be changed at this time.' }
       }
-      if (req.file?.path) fs.unlink(req.file.path, () => {})
+      await removeUploadedFile(req.file)
       return res.status(409).json(message)
     }
 
@@ -304,9 +372,10 @@ router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('
       },
       { new: true },
     ).select(PUBLIC_FIELDS).lean()
+    uploadPersisted = true
 
     if (oldPath && oldPath !== req.file.path && fs.existsSync(oldPath)) {
-      fs.unlink(oldPath, () => {})
+      await removeUploadedFile({ path: oldPath })
     }
 
     // Notify admin; a send failure must not undo the successful upload.
@@ -346,7 +415,7 @@ router.post('/registrations/:id/payment-proof', requireAttendee, upload.single('
 
     return res.json({ success: true, message: 'Payment proof submitted. Our team will review it.', item: toAttendeeView(updated) })
   } catch (err) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {})
+    if (!uploadPersisted) await removeUploadedFile(req.file)
     console.error('Payment proof upload error:', err.message)
     return res.status(500).json({ success: false, message: 'Failed to submit payment proof. Please try again.' })
   }
