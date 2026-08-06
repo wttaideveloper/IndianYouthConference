@@ -4,6 +4,21 @@ import { EVENT, SOCIAL, NAV_LINKS } from '../data/content'
 import Button from './Button'
 
 export default function Footer() {
+  const policyColumns = [
+    [
+      { label: 'Terms & Conditions', path: '/terms-and-conditions' },
+      { label: 'Privacy Policy', path: '/privacy-policy' },
+      { label: 'Refund Policy', path: '/refund-policy' },
+      { label: 'Cancellation Policy', path: '/cancellation-policy' },
+    ],
+    [
+      { label: 'Digital Delivery Policy', path: '/digital-delivery-policy' },
+      { label: 'Cookie Policy', path: '/cookie-policy' },
+      { label: 'Code of Conduct', path: '/code-of-conduct' },
+      { label: 'Photography & Media Consent', path: '/photography-media-consent' },
+    ],
+  ]
+
   return (
     <footer className="relative section-dark overflow-hidden">
       <div className="orb orb-pink w-96 h-96 -bottom-48 -left-48 opacity-20" />
@@ -39,8 +54,8 @@ export default function Footer() {
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+          <div>
             <div className="flex items-center gap-3 mb-5">
               <img src="/images/iyc-logo.png" alt="IYC" className="h-12 w-auto brightness-0 invert opacity-90" />
               <div>
@@ -69,6 +84,27 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div>
+            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-widest">Policies</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-3 lg:grid-cols-2">
+              {policyColumns.map((column, index) => (
+                <ul key={index} className="space-y-3">
+                  {column.map((link) => (
+                    <li key={link.path}>
+                      <Link
+                        to={link.path}
+                        className="text-white/50 hover:text-white text-sm transition-colors flex items-center gap-2 group rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:text-white"
+                      >
+                        <span className="w-0 group-hover:w-3 h-px bg-primary transition-all duration-200" />
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ))}
+            </div>
           </div>
 
           <div>

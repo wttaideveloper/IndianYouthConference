@@ -7,3 +7,4 @@ server/uploads
 .env
 .env.*
 !.env.example
+policy-source/

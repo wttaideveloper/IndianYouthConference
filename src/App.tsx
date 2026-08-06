@@ -9,6 +9,8 @@ import Register from './pages/Register'
 import AdminLogin from './pages/admin/AdminLogin'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLayout from './components/admin/AdminLayout'
+import PolicyPage from './components/PolicyPage'
+import { POLICIES } from './data/policies'
 
 export default function App() {
   return (
@@ -20,6 +22,9 @@ export default function App() {
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/register" element={<Register />} />
+        {POLICIES.map((policy) => (
+          <Route key={policy.path} path={policy.path} element={<PolicyPage policy={policy} />} />
+        ))}
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminLayout />}>

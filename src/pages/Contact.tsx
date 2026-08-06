@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Phone, Facebook, Youtube, Users } from 'lucide-react'
+import { Phone, Facebook, Youtube, Users, MapPin, Mail } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import SectionHeading from '../components/SectionHeading'
 import ContactForm from '../components/ContactForm'
@@ -20,6 +20,56 @@ export default function Contact() {
 
       <section className="py-24 md:py-32 section-mesh">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-20 text-center"
+          >
+            <span className="label-pill mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Registered Address
+            </span>
+            <h2 className="font-display text-2xl md:text-3xl font-bold leading-tight text-navy">
+              <span className="gradient-text">INDIAN YOUTH CONFERENCE (IYC.)</span>
+            </h2>
+            <p className="mt-1 text-sm md:text-base text-gray-500">Educational Charitable Trust</p>
+            <p className="mt-2 text-xs md:text-sm text-gray-500">Registration Doc No - 73/IV/2024</p>
+            <div className="glass-card max-w-md mx-auto mt-6 rounded-2xl px-5 py-4 sm:px-6">
+              <MapPin size={20} className="mx-auto mb-2 text-primary" aria-hidden="true" />
+              <address className="not-italic text-sm md:text-base leading-relaxed text-gray-600">
+                <span className="block">Building No: 20/1416/1, Pax Street 1</span>
+                <span className="block">Nellikunnu, Thrissur, Kerala – 680005</span>
+              </address>
+            </div>
+            <div className="glass-card max-w-md mx-auto mt-4 rounded-2xl">
+              <div className="flex flex-col sm:flex-row">
+                <a
+                  href="mailto:indianyouthconference@gmail.com"
+                  aria-label="Email Indian Youth Conference"
+                  className="group flex min-w-0 flex-1 items-center justify-center gap-2 px-4 py-3 text-sm text-gray-600 transition-colors hover:bg-primary/5 hover:text-primary focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                >
+                  <span className="flex w-8 h-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-secondary/15 text-primary/75 transition-colors group-hover:text-primary group-focus-visible:text-primary">
+                    <Mail size={16} aria-hidden="true" />
+                  </span>
+                  <span className="break-all">indianyouthconference@gmail.com</span>
+                </a>
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/20 to-transparent sm:h-auto sm:w-px sm:bg-gradient-to-b" />
+                <a
+                  href="tel:+918123941065"
+                  aria-label="Call Indian Youth Conference at +91 8123941065"
+                  className="group flex min-w-0 flex-1 items-center justify-center gap-2 px-4 py-3 text-sm text-gray-600 transition-colors hover:bg-primary/5 hover:text-primary focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                >
+                  <span className="flex w-8 h-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-secondary/15 text-primary/75 transition-colors group-hover:text-primary group-focus-visible:text-primary">
+                    <Phone size={16} aria-hidden="true" />
+                  </span>
+                  <span>+91 8123941065</span>
+                </a>
+              </div>
+            </div>
+          </motion.div>
+
           <SectionHeading
             label="Our Team"
             title="Our Co-ordinators"
