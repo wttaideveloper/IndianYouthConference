@@ -10,6 +10,7 @@ export default function Footer() {
       { label: 'Privacy Policy', path: '/privacy-policy' },
       { label: 'Refund Policy', path: '/refund-policy' },
       { label: 'Cancellation Policy', path: '/cancellation-policy' },
+      { label: 'Customer Care & Grievance', path: '/customer-care-grievance-redressal' },
     ],
     [
       { label: 'Digital Delivery Policy', path: '/digital-delivery-policy' },

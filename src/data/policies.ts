@@ -6,6 +6,8 @@ export interface PolicyLink {
 export type PolicyBlock =
   | { type: 'paragraph'; text: string; links?: PolicyLink[] }
   | { type: 'list'; items: Array<{ text: string; links?: PolicyLink[] }> }
+  | { type: 'details'; details: PolicyContactDetail[] }
+  | { type: 'table'; label: string; headers: string[]; rows: Array<Array<{ text: string; href?: string; ariaLabel?: string }>> }
 
 export interface PolicySection {
   heading: string
@@ -24,9 +26,10 @@ export interface Policy {
   title: string
   browserTitle: string
   subtitle: string
+  intro?: PolicyBlock[]
   sections: PolicySection[]
-  contactIntro: string
-  contactDetails: PolicyContactDetail[]
+  contactIntro?: string
+  contactDetails?: PolicyContactDetail[]
 }
 
 const contactIntro =
@@ -879,6 +882,146 @@ export const POLICIES: Policy[] = [
     ],
     contactIntro,
     contactDetails,
+  },
+  {
+    path: '/customer-care-grievance-redressal',
+    footerLabel: 'Customer Care & Grievance',
+    title: 'Customer Care & Grievance Redressal Policy',
+    browserTitle: 'Customer Care & Grievance Redressal | Indian Youth Conference',
+    subtitle: 'Indian Youth Conference | www.indianyouthconference.com',
+    intro: [
+      {
+        type: 'paragraph',
+        text: 'Indian Youth Conference is committed to providing participants, registrants, donors, website users, and other customers with a clear and accessible process for raising questions, complaints, and grievances relating to conference registration, payments, refunds, cancellations, website use, or related services.',
+      },
+    ],
+    sections: [
+      {
+        heading: '1. Customer Care Contact',
+        blocks: [
+          {
+            type: 'details',
+            details: [
+              { label: 'Website', value: 'www.indianyouthconference.com', href: 'https://www.indianyouthconference.com' },
+              { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
+              { label: 'General Phone', value: '+91 7012963015', href: 'tel:+917012963015' },
+              { label: 'Postal Address', value: 'Building No: 20/1416/1, Pax Street 1, Nellikunnu, Thrissur, Kerala - 680005, India' },
+            ],
+          },
+        ],
+      },
+      {
+        heading: '2. Grievance Redressal Contacts',
+        blocks: [
+          {
+            type: 'table',
+            label: 'Grievance redressal contacts',
+            headers: ['Name', 'Contact Number'],
+            rows: [
+              [
+                { text: 'Mr. Ronald Stephen' },
+                { text: '+91 99017 98901', href: 'tel:+919901798901', ariaLabel: 'Call Mr. Ronald Stephen at +91 99017 98901' },
+              ],
+              [
+                { text: 'Dr. Hyacinth Austin' },
+                { text: '+91 97915 08601', href: 'tel:+919791508601', ariaLabel: 'Call Dr. Hyacinth Austin at +91 97915 08601' },
+              ],
+            ],
+          },
+          {
+            type: 'paragraph',
+            text: 'Grievances may also be sent by email to indianyouthconference@gmail.com.',
+          },
+        ],
+      },
+      {
+        heading: '3. How to Raise a Grievance',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'To help us investigate and respond efficiently, please include the following information wherever applicable:',
+          },
+          {
+            type: 'list',
+            items: [
+              { text: 'Your full name, phone number, and email address.' },
+              { text: 'Registration number, booking reference, payment reference, or transaction ID.' },
+              { text: 'A clear description of the issue or complaint.' },
+              { text: 'Relevant dates and supporting documents, screenshots, or payment receipts.' },
+              { text: 'The resolution you are requesting.' },
+            ],
+          },
+        ],
+      },
+      {
+        heading: '4. Acknowledgement and Resolution',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'We will make reasonable efforts to acknowledge grievances promptly and to resolve them in a fair and timely manner. The time required may vary depending on the nature of the complaint, verification required, payment gateway or banking dependencies, and whether information is required from third parties.',
+          },
+          {
+            type: 'paragraph',
+            text: 'Where a grievance concerns an approved refund, the refund will be processed in accordance with the Indian Youth Conference Refund Policy. Approved refunds are ordinarily processed within 14 business days, subject to the applicable 15% deduction and the terms stated in that policy.',
+            links: [{ text: 'Indian Youth Conference Refund Policy', path: '/refund-policy' }],
+          },
+        ],
+      },
+      {
+        heading: '5. Escalation',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'If you are not satisfied with the initial response, you may request escalation by replying to the same email thread or by contacting either of the grievance contacts listed above. Please mention that the matter is an escalation and include any earlier correspondence or reference number.',
+          },
+        ],
+      },
+      {
+        heading: '6. Scope of Grievances',
+        blocks: [
+          {
+            type: 'list',
+            items: [
+              { text: 'Conference registration and participant records.' },
+              { text: 'Payments, duplicate charges, refunds, or cancellation requests.' },
+              { text: 'Registration transfers.' },
+              { text: 'Website access, incorrect information, or technical issues.' },
+              { text: 'Privacy or personal data concerns.' },
+              { text: 'Participant conduct, safety, accessibility, or service-related complaints.' },
+              { text: 'Other issues directly connected with Indian Youth Conference services.' },
+            ],
+          },
+        ],
+      },
+      {
+        heading: '7. Privacy and Confidentiality',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Information submitted through the grievance process will be used for reviewing, investigating, documenting, and resolving the complaint, and for meeting applicable legal or administrative requirements. Personal information will be handled in accordance with the Indian Youth Conference Privacy Policy and applicable law.',
+            links: [{ text: 'Indian Youth Conference Privacy Policy', path: '/privacy-policy' }],
+          },
+        ],
+      },
+      {
+        heading: '8. Abuse of the Grievance Process',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Indian Youth Conference may decline to engage with communications that are abusive, threatening, knowingly false, fraudulent, repetitive without new information, or unrelated to its services. This does not limit a person from raising a genuine complaint or exercising rights available under applicable law.',
+          },
+        ],
+      },
+      {
+        heading: '9. Changes to This Policy',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'This policy may be updated from time to time to reflect changes in conference operations, contact details, legal requirements, or grievance-handling procedures. The version published on the website will be the current version.',
+          },
+        ],
+      },
+    ],
   },
 ]
 

@@ -40,6 +40,7 @@ interface RegistrationAccessModalProps {
 const OTP_RESEND_SECONDS = 60
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const REGISTRATION_NOT_FOUND_MESSAGE = 'This email isn’t registered yet. Please check the email address or register first.'
 const otpCooldownExpiries = new Map<string, number>()
 
 function cooldownKey(email: string) {
@@ -58,6 +59,32 @@ function getActiveCooldownExpiry(email: string) {
 
 function getCooldownSeconds(expiresAt: number | null) {
   return expiresAt ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)) : 0
+}
+
+function isValidEmail(value: string) {
+  if (value.length > 254 || /\s/.test(value)) return false
+
+  const atIndex = value.indexOf('@')
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@')) return false
+
+  const local = value.slice(0, atIndex)
+  const domain = value.slice(atIndex + 1)
+  if (
+    local.length > 64 ||
+    local.startsWith('.') ||
+    local.endsWith('.') ||
+    local.includes('..') ||
+    !/^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local) ||
+    domain.length > 253 ||
+    domain.startsWith('.') ||
+    domain.endsWith('.') ||
+    domain.includes('..')
+  ) return false
+
+  const labels = domain.split('.')
+  return labels.length >= 2 &&
+    /^[A-Z]{2,63}$/i.test(labels[labels.length - 1] || '') &&
+    labels.every((label) => /^[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?$/i.test(label))
 }
 
 function messageForError(error: unknown, fallback: string) {
@@ -236,6 +263,8 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
   const [items, setItems] = useState<RegistrationAccessItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [emailValidationMessage, setEmailValidationMessage] = useState('')
+  const [notRegisteredMessage, setNotRegisteredMessage] = useState('')
   const [notice, setNotice] = useState('')
   const [cooldownSeconds, setCooldownSeconds] = useState(0)
   const [cooldownExpiresAt, setCooldownExpiresAt] = useState<number | null>(null)
@@ -303,6 +332,8 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
     if (!isOpen) return
     clearFile()
     setError('')
+    setEmailValidationMessage('')
+    setNotRegisteredMessage('')
     setNotice('')
     setCode('')
     restoreCooldown(email)
@@ -344,12 +375,17 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
 
   const requestOtp = async () => {
     const normalizedEmail = email.trim().toLowerCase()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setError('Enter a valid email address.')
+    if (!isValidEmail(normalizedEmail)) {
+      setError('')
+      setNotRegisteredMessage('')
+      setEmailValidationMessage('Please enter a valid email address.')
+      setStep('email')
       return
     }
 
     setError('')
+    setEmailValidationMessage('')
+    setNotRegisteredMessage('')
     setNotice('')
     setIsRequesting(true)
     try {
@@ -359,7 +395,10 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
       startCooldown(normalizedEmail, 'requested')
       setStep('otp')
     } catch (requestError) {
-      if (requestError instanceof RegistrationAccessApiError && requestError.status === 429) {
+      if (requestError instanceof RegistrationAccessApiError && requestError.code === 'REGISTRATION_NOT_FOUND') {
+        setStep('email')
+        setNotRegisteredMessage(REGISTRATION_NOT_FOUND_MESSAGE)
+      } else if (requestError instanceof RegistrationAccessApiError && requestError.status === 429) {
         setError('')
         startCooldown(normalizedEmail, 'rate_limited')
       } else {
@@ -423,6 +462,8 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
     const changed = nextEmail.trim().toLowerCase() !== email.trim().toLowerCase()
     setEmail(nextEmail)
     setError('')
+    setEmailValidationMessage('')
+    setNotRegisteredMessage('')
     setNotice('')
     if (changed) restoreCooldown(nextEmail)
   }
@@ -435,6 +476,8 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
     setEmail('')
     setCode('')
     setError('')
+    setEmailValidationMessage('')
+    setNotRegisteredMessage('')
     setNotice('')
     setCooldownSeconds(0)
     setCooldownExpiresAt(null)
@@ -535,7 +578,9 @@ export default function RegistrationAccessModal({ isOpen, onClose }: Registratio
               <div className="mx-auto max-w-md">
                 <div className="mb-6 rounded-2xl bg-primary/[0.05] p-4 text-sm leading-relaxed text-gray-600"><Mail className="mb-2 text-primary" size={20} />Enter the email address used for registration. We will send a verification code if an active registration exists.</div>
                 <label htmlFor="registration-access-email" className="mb-2 block text-sm font-semibold text-navy">Email address</label>
-                <input id="registration-access-email" type="email" autoComplete="email" value={email} onChange={(event) => changeEmail(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void requestOtp() }} disabled={isRequesting} className="input-modern w-full" placeholder="you@example.com" />
+                <input id="registration-access-email" type="email" autoComplete="email" value={email} onChange={(event) => changeEmail(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void requestOtp() }} disabled={isRequesting} aria-invalid={Boolean(emailValidationMessage)} aria-describedby={emailValidationMessage ? 'registration-access-email-validation' : undefined} className="input-modern w-full" placeholder="you@example.com" />
+                {emailValidationMessage && <p id="registration-access-email-validation" role="alert" className="mt-3 text-sm font-medium text-red-700">{emailValidationMessage}</p>}
+                {notRegisteredMessage && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{notRegisteredMessage}</p>}
                 <button type="button" onClick={() => void requestOtp()} disabled={isRequesting || cooldownSeconds > 0} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-4 py-3 font-semibold text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50">
                   {isRequesting && <LoaderCircle size={17} className="animate-spin" />}{isRequesting ? 'Sending code…' : hasRequestedOtp ? 'Resend verification code' : 'Send verification code'}
                 </button>

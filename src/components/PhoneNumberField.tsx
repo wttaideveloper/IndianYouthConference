@@ -1,4 +1,4 @@
-import { COUNTRY_CALLING_CODE_OPTIONS } from '../data/countryCallingCodes'
+import { COUNTRY_CALLING_CODE_OPTIONS, getCountryCallingCodeOption } from '../data/countryCallingCodes'
 
 interface Props {
   id: string
@@ -22,6 +22,7 @@ export default function PhoneNumberField({
   error,
 }: Props) {
   const errorId = `${id}-error`
+  const maxLength = getCountryCallingCodeOption(countryCode)?.maxLength
   const controlClass = error
     ? 'border-red-400 ring-2 ring-red-100 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10'
     : 'border-[#e8eaf2] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10'
@@ -57,8 +58,16 @@ export default function PhoneNumberField({
           aria-invalid={Boolean(error)}
           value={localNumber}
           onChange={(event) => onLocalNumberChange(event.target.value)}
+          onPaste={(event) => {
+            const pastedValue = event.clipboardData.getData('text')
+            if (pastedValue.trim().startsWith('+')) {
+              event.preventDefault()
+              onLocalNumberChange(pastedValue)
+            }
+          }}
           placeholder="Phone number"
           pattern="[0-9]*"
+          maxLength={maxLength}
           className="min-w-0 flex-1 border-0 rounded-none bg-transparent px-[1.125rem] text-sm outline-none placeholder:text-[#a0a8be] focus:outline-none"
         />
       </div>

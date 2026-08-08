@@ -56,7 +56,7 @@ const registrationSchema = new mongoose.Schema(
   { timestamps: true },
 )
 
-registrationSchema.index({ email: 1 })
+registrationSchema.index({ email: 1 }, { unique: true })
 registrationSchema.index({ status: 1 })
 registrationSchema.index({ occupation: 1 })
 registrationSchema.index({ createdAt: -1 })

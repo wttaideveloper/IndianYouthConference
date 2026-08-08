@@ -1,12 +1,19 @@
 export interface CountryCallingCode {
   name: string
   code: string
+  minLength?: number
+  maxLength?: number
+}
+
+export interface CountryCallingCodeOption extends CountryCallingCode {
+  minLength: number
+  maxLength: number
 }
 
 // Comprehensive country and territory coverage. The selector options below
 // collapse shared calling codes to one stable value while retaining shared regions.
 export const COUNTRY_CALLING_CODES: CountryCallingCode[] = [
-  { name: 'India', code: '+91' },
+  { name: 'India', code: '+91', minLength: 10, maxLength: 10 },
   { name: 'United States / Canada / Caribbean', code: '+1' },
   { name: 'Afghanistan', code: '+93' },
   { name: 'Albania', code: '+355' },
@@ -241,9 +248,61 @@ export const COUNTRY_CALLING_CODES: CountryCallingCode[] = [
 
 export const DEFAULT_COUNTRY_CALLING_CODE = '+91'
 
+const DEFAULT_MIN_NATIONAL_NUMBER_LENGTH = 7
+const COUNTRY_CALLING_CODE_LENGTH_RULES: Record<string, { minLength: number; maxLength: number }> = {
+  '+1': { minLength: 10, maxLength: 10 },
+  '+7': { minLength: 10, maxLength: 10 },
+  '+20': { minLength: 10, maxLength: 10 },
+  '+27': { minLength: 9, maxLength: 9 },
+  '+44': { minLength: 9, maxLength: 10 },
+  '+49': { minLength: 5, maxLength: 11 },
+  '+52': { minLength: 10, maxLength: 10 },
+  '+55': { minLength: 10, maxLength: 11 },
+  '+61': { minLength: 9, maxLength: 9 },
+  '+65': { minLength: 8, maxLength: 8 },
+  '+81': { minLength: 9, maxLength: 10 },
+  '+86': { minLength: 11, maxLength: 11 },
+  '+92': { minLength: 10, maxLength: 10 },
+  '+971': { minLength: 9, maxLength: 9 },
+}
+
+function defaultMaxNationalNumberLength(code: string) {
+  return 15 - code.replace(/\D/g, '').length
+}
+
+function toCountryCallingCodeOption(item: CountryCallingCode): CountryCallingCodeOption {
+  const rule = COUNTRY_CALLING_CODE_LENGTH_RULES[item.code]
+  const minLength = item.minLength ?? rule?.minLength ?? DEFAULT_MIN_NATIONAL_NUMBER_LENGTH
+  const maxLength = item.maxLength ?? rule?.maxLength ?? defaultMaxNationalNumberLength(item.code)
+  return { ...item, minLength, maxLength }
+}
+
 export const COUNTRY_CALLING_CODE_OPTIONS = COUNTRY_CALLING_CODES.filter(
   ({ code }, index) => COUNTRY_CALLING_CODES.findIndex((item) => item.code === code) === index,
-)
+).map(toCountryCallingCodeOption)
+
+export function getCountryCallingCodeOption(countryCode: string) {
+  return COUNTRY_CALLING_CODE_OPTIONS.find(({ code }) => code === countryCode)
+}
+
+export function isValidNationalPhoneNumber(countryCode: string, localNumber: string) {
+  const option = getCountryCallingCodeOption(countryCode)
+  return Boolean(
+    option &&
+    /^\d+$/.test(localNumber) &&
+    localNumber.length >= option.minLength &&
+    localNumber.length <= option.maxLength,
+  )
+}
+
+export function nationalPhoneNumberLengthError(label: string, countryCode: string) {
+  const option = getCountryCallingCodeOption(countryCode)
+  if (!option) return 'Select a country calling code'
+  if (option.minLength === option.maxLength) {
+    return `${label} must be exactly ${option.minLength} digits for ${countryCode}.`
+  }
+  return `${label} must contain between ${option.minLength} and ${option.maxLength} digits for ${countryCode}.`
+}
 
 const CALLING_CODES_BY_LENGTH = COUNTRY_CALLING_CODE_OPTIONS.map(({ code }) => code)
   .sort((a, b) => b.length - a.length)
@@ -255,7 +314,11 @@ export function toInternationalPhone(countryCode: string, localNumber: string) {
 }
 
 export function isValidInternationalPhone(value: string) {
-  return /^\+[1-9]\d{7,14}$/.test(value)
+  const input = String(value || '').trim()
+  const countryCode = CALLING_CODES_BY_LENGTH.find(
+    (code) => input.startsWith(code) && input.length > code.length,
+  )
+  return Boolean(countryCode && isValidNationalPhoneNumber(countryCode, input.slice(countryCode.length)))
 }
 
 export function splitInternationalPhone(value: string, fallbackCountryCode = DEFAULT_COUNTRY_CALLING_CODE) {

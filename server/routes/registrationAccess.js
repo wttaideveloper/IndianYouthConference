@@ -170,8 +170,8 @@ function toAttendeeView(reg) {
 /**
  * POST /api/registration-access/otp/request
  * Body: { email }
- * Always returns the same generic response so this endpoint cannot leak whether an
- * email is registered. An 8-digit OTP is emailed only when a registration exists.
+ * Returns REGISTRATION_NOT_FOUND for an email without a registration. An 8-digit
+ * OTP is emailed only when a registration exists.
  */
 router.post('/otp/request', async (req, res) => {
   const email = normalizeEmail(req.body?.email)
@@ -203,6 +203,15 @@ router.post('/otp/request', async (req, res) => {
       return res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' })
     }
 
+    const reg = await Registration.findOne({ email }).select('email fullName fee paymentOption').lean()
+    if (!reg) {
+      return res.status(404).json({
+        success: false,
+        code: 'REGISTRATION_NOT_FOUND',
+        message: 'This email isn’t registered yet.',
+      })
+    }
+
     const emailLimit = await hitRateLimit({
       scope: 'otp_request_email',
       key: email,
@@ -225,11 +234,6 @@ router.post('/otp/request', async (req, res) => {
         success: false,
         message: 'Too many requests. Please try again later.',
       })
-    }
-
-    const reg = await Registration.findOne({ email }).select('email fullName fee paymentOption').lean()
-    if (!reg) {
-      return res.status(202).json(generic)
     }
 
     // Only one active code per email at a time.

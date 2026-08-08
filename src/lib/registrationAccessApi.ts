@@ -15,18 +15,21 @@ export interface RegistrationAccessItem {
 
 interface ApiFailure {
   success?: false
+  code?: string
   message?: string
   paymentState?: PaymentState
 }
 
 export class RegistrationAccessApiError extends Error {
   status: number
+  code?: string
   paymentState?: PaymentState
 
   constructor(status: number, response?: ApiFailure) {
     super(response?.message || 'Something went wrong. Please try again.')
     this.name = 'RegistrationAccessApiError'
     this.status = status
+    this.code = response?.code
     this.paymentState = response?.paymentState
   }
 }

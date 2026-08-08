@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import { sendAdminRegistrationNotification } from '../mailer.js'
 import Registration from '../models/Registration.js'
 import { isDBConnected } from '../db.js'
+import { isValidRegistrationPhoneNumber } from '../lib/countryPhoneValidation.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const uploadsDir = path.join(__dirname, '..', 'uploads')
@@ -40,7 +41,6 @@ const GENDERS = ['Male', 'Female']
 const HOW_DID_YOU_KNOW = ['Facebook', 'WhatsApp', 'Instagram', 'Other']
 const PAST_ATTENDANCE = ['Yes', 'No']
 const PROGRAM_PREFERENCES = ['All the Days', 'Only Over the Weekend', '']
-const INTERNATIONAL_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
 const STANDARD_LABELS = {
   Student: 'Student',
@@ -58,8 +58,14 @@ function calculateFee(occupation, programPreference) {
   }
 }
 
-function isValidInternationalPhone(value) {
-  return INTERNATIONAL_PHONE_PATTERN.test(String(value || '').trim())
+async function removeUploadedFile(file) {
+  if (!file?.path) return
+
+  try {
+    await fs.promises.unlink(file.path)
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.error('Failed to remove uploaded payment proof:', err.message)
+  }
 }
 
 function validateBody(body) {
@@ -68,7 +74,7 @@ function validateBody(body) {
   if (!body.firstName?.trim()) errors.push('First name is required')
   if (!body.lastName?.trim()) errors.push('Last name is required')
   if (!GENDERS.includes(body.gender)) errors.push('Please select a valid gender')
-  if (!isValidInternationalPhone(body.phone)) {
+  if (!isValidRegistrationPhoneNumber(body.phone)) {
     errors.push('A valid phone number is required')
   }
   if (!body.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
@@ -92,7 +98,7 @@ function validateBody(body) {
     errors.push('Please indicate if you attended IYC before')
   }
   if (!body.emergencyContactName?.trim()) errors.push('Emergency contact name is required')
-  if (!isValidInternationalPhone(body.emergencyContactNumber)) {
+  if (!isValidRegistrationPhoneNumber(body.emergencyContactNumber)) {
     errors.push('A valid emergency contact number is required')
   }
 
@@ -123,8 +129,28 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
 
     const errors = validateBody(registrationBody)
     if (errors.length > 0) {
-      if (req.file?.path) fs.unlink(req.file.path, () => {})
+      await removeUploadedFile(req.file)
       return res.status(400).json({ success: false, errors })
+    }
+
+    const email = registrationBody.email.trim().toLowerCase()
+
+    if (!isDBConnected()) {
+      await removeUploadedFile(req.file)
+      return res.status(503).json({
+        success: false,
+        message: 'Registration service unavailable. Database is not connected.',
+      })
+    }
+
+    const existingRegistration = await Registration.exists({ email })
+    if (existingRegistration) {
+      await removeUploadedFile(req.file)
+      return res.status(409).json({
+        success: false,
+        code: 'REGISTRATION_EMAIL_EXISTS',
+        message: 'A registration with this email already exists.',
+      })
     }
 
     const { fee, label: feeLabel } = calculateFee(
@@ -138,7 +164,7 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       fullName: `${registrationBody.firstName.trim()} ${registrationBody.lastName.trim()}`,
       gender: registrationBody.gender,
       phone: registrationBody.phone.trim(),
-      email: registrationBody.email.trim().toLowerCase(),
+      email,
       streetAddress: registrationBody.streetAddress.trim(),
       streetAddress2: registrationBody.streetAddress2?.trim() || '',
       city: registrationBody.city.trim(),
@@ -168,14 +194,6 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
         : {}),
     }
 
-    if (!isDBConnected()) {
-      if (req.file?.path) fs.unlink(req.file.path, () => {})
-      return res.status(503).json({
-        success: false,
-        message: 'Registration service unavailable. Database is not connected.',
-      })
-    }
-
     const saved = await Registration.create(data)
 
     let emailSent = false
@@ -189,14 +207,21 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
 
     const successMessage =
       paymentOption === 'pay_later'
-        ? 'Registration submitted successfully. Please complete your payment soon — you will be confirmed once we receive your payment proof.'
+        ? 'Registration submitted successfully. Please complete your payment before the event. You can return to this website anytime and use ‘Already Registered’ on the Home page to continue your payment and submit your payment proof.'
         : emailSent
           ? 'Registration submitted successfully. You will receive a confirmation email once your payment is verified by our team.'
           : 'Registration submitted successfully. Our team will review your payment and contact you shortly.'
 
     res.json({ success: true, message: successMessage, id: saved._id })
   } catch (err) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {})
+    await removeUploadedFile(req.file)
+    if (err?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        code: 'REGISTRATION_EMAIL_EXISTS',
+        message: 'A registration with this email already exists.',
+      })
+    }
     console.error('Registration error:', err.message)
     res.status(500).json({
       success: false,

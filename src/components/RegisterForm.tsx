@@ -1,6 +1,7 @@
-import { useState, FormEvent, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import Button from './Button'
 import PaymentSection from './PaymentSection'
 import PhoneNumberField from './PhoneNumberField'
@@ -15,7 +16,9 @@ import {
 } from '../data/registration'
 import {
   DEFAULT_COUNTRY_CALLING_CODE,
-  isValidInternationalPhone,
+  getCountryCallingCodeOption,
+  isValidNationalPhoneNumber,
+  nationalPhoneNumberLengthError,
   splitInternationalPhone,
   toInternationalPhone,
 } from '../data/countryCallingCodes'
@@ -60,6 +63,8 @@ const INITIAL: FormData = {
   emergencyContactName: '',
 }
 
+const DUPLICATE_EMAIL_MESSAGE = 'A registration with this email already exists. Please use Already Registered to view or continue your registration.'
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="font-display font-bold text-navy mb-4 flex items-center gap-2">
@@ -91,6 +96,8 @@ function FieldError({ error }: { error?: string }) {
 }
 
 export default function RegisterForm() {
+  const formRef = useRef<HTMLFormElement>(null)
+  const successRef = useRef<HTMLDivElement>(null)
   const [form, setForm] = useState<FormData>(INITIAL)
   const [screenshot, setScreenshot] = useState<File | null>(null)
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
@@ -100,6 +107,7 @@ export default function RegisterForm() {
   const [paymentOption, setPaymentOption] = useState<'pay_now' | 'pay_later'>('pay_now')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [successfulPaymentOption, setSuccessfulPaymentOption] = useState<'pay_now' | 'pay_later' | null>(null)
   const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CALLING_CODE)
   const [phoneLocalNumber, setPhoneLocalNumber] = useState('')
   const [emergencyCountryCode, setEmergencyCountryCode] = useState(DEFAULT_COUNTRY_CALLING_CODE)
@@ -112,6 +120,15 @@ export default function RegisterForm() {
         : null,
     [form.occupation, form.programPreference],
   )
+
+  useEffect(() => {
+    if (status !== 'success' || successfulPaymentOption !== 'pay_later') return
+
+    const frame = window.requestAnimationFrame(() => {
+      successRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [status, successfulPaymentOption])
 
   const clearFieldError = (field: string) => {
     setFieldErrors((prev) => {
@@ -135,17 +152,48 @@ export default function RegisterForm() {
     setEmergencyLocalNumber('')
   }
 
+  const phoneValidationError = (label: string, countryCode: string, localNumber: string) => {
+    if (!countryCode) return 'Select a country calling code'
+    if (!localNumber) return `${label} is required`
+    return isValidNationalPhoneNumber(countryCode, localNumber)
+      ? ''
+      : nationalPhoneNumberLengthError(label, countryCode)
+  }
+
+  const syncPhoneFieldError = (
+    field: 'phone' | 'emergencyContactNumber',
+    label: string,
+    countryCode: string,
+    localNumber: string,
+    force = false,
+  ) => {
+    setFieldErrors((prev) => {
+      if (!force && !(field in prev)) return prev
+      const error = localNumber ? phoneValidationError(label, countryCode, localNumber) : ''
+      if (!error && !(field in prev)) return prev
+      const next = { ...prev }
+      if (error) next[field] = error
+      else delete next[field]
+      return next
+    })
+  }
+
   const handleCountryCodeChange = (field: 'phone' | 'emergencyContactNumber', value: string) => {
+    const localNumber = field === 'phone' ? phoneLocalNumber : emergencyLocalNumber
+    const label = field === 'phone' ? 'Phone number' : 'Emergency contact number'
     if (field === 'phone') setPhoneCountryCode(value)
     else setEmergencyCountryCode(value)
     setErrors([])
-    clearFieldError(field)
+    syncPhoneFieldError(field, label, value, localNumber, Boolean(localNumber))
   }
 
   const handleLocalNumberChange = (field: 'phone' | 'emergencyContactNumber', value: string) => {
     const trimmedValue = value.trim()
     const parsed = trimmedValue.startsWith('+') ? splitInternationalPhone(trimmedValue) : null
-    const localNumber = (parsed?.localNumber || value.replace(/\D/g, '')).slice(0, 15)
+    const countryCode = parsed?.countryCode || (field === 'phone' ? phoneCountryCode : emergencyCountryCode)
+    const maxLength = getCountryCallingCodeOption(countryCode)?.maxLength || 15
+    const localNumber = (parsed?.localNumber || value.replace(/\D/g, '')).slice(0, maxLength)
+    const label = field === 'phone' ? 'Phone number' : 'Emergency contact number'
 
     if (field === 'phone') {
       if (parsed) setPhoneCountryCode(parsed.countryCode)
@@ -156,7 +204,7 @@ export default function RegisterForm() {
     }
 
     setErrors([])
-    clearFieldError(field)
+    syncPhoneFieldError(field, label, countryCode, localNumber)
   }
 
   const handleScreenshotChange = (file: File | null, preview: string | null) => {
@@ -188,6 +236,7 @@ export default function RegisterForm() {
     setErrors([])
     setFieldErrors({})
     setMessage('')
+    setSuccessfulPaymentOption(null)
   }
 
   const validateForm = (): Record<string, string> => {
@@ -195,13 +244,8 @@ export default function RegisterForm() {
     if (!form.firstName.trim()) errs.firstName = 'First name is required'
     if (!form.lastName.trim()) errs.lastName = 'Last name is required'
     if (!form.gender) errs.gender = 'Please select a gender'
-    const phone = toInternationalPhone(phoneCountryCode, phoneLocalNumber)
-    const emergencyContactNumber = toInternationalPhone(emergencyCountryCode, emergencyLocalNumber)
-    if (!phoneCountryCode) errs.phone = 'Select a country calling code'
-    else if (!phone) errs.phone = 'Phone number is required'
-    else if (!isValidInternationalPhone(phone)) {
-      errs.phone = 'Enter a valid international phone number (8–15 digits)'
-    }
+    const phoneError = phoneValidationError('Phone number', phoneCountryCode, phoneLocalNumber)
+    if (phoneError) errs.phone = phoneError
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       errs.email = 'A valid email is required'
     }
@@ -216,11 +260,12 @@ export default function RegisterForm() {
     if (!form.howDidYouKnow) errs.howDidYouKnow = 'Please select how you heard about IYC'
     if (!form.pastAttendance) errs.pastAttendance = 'Please indicate if you attended IYC before'
     if (!form.emergencyContactName.trim()) errs.emergencyContactName = 'Emergency contact name is required'
-    if (!emergencyCountryCode) errs.emergencyContactNumber = 'Select a country calling code'
-    else if (!emergencyContactNumber) errs.emergencyContactNumber = 'Emergency contact number is required'
-    else if (!isValidInternationalPhone(emergencyContactNumber)) {
-      errs.emergencyContactNumber = 'Enter a valid international phone number (8–15 digits)'
-    }
+    const emergencyPhoneError = phoneValidationError(
+      'Emergency contact number',
+      emergencyCountryCode,
+      emergencyLocalNumber,
+    )
+    if (emergencyPhoneError) errs.emergencyContactNumber = emergencyPhoneError
     return errs
   }
 
@@ -264,7 +309,13 @@ export default function RegisterForm() {
 
       if (!res.ok) {
         setStatus('error')
-        setErrors(data.errors || [data.message || 'Submission failed'])
+        if (data.code === 'REGISTRATION_EMAIL_EXISTS') {
+          setErrors([])
+          setMessage('')
+          setFieldErrors((prev) => ({ ...prev, email: DUPLICATE_EMAIL_MESSAGE }))
+        } else {
+          setErrors(data.errors || [data.message || 'Submission failed'])
+        }
         return
       }
 
@@ -274,6 +325,7 @@ export default function RegisterForm() {
       setForm(INITIAL)
       resetPhoneFields()
       setPaymentOption('pay_now')
+      setSuccessfulPaymentOption(paymentOption)
       setStatus('success')
       setMessage(data.message)
     } catch {
@@ -282,8 +334,41 @@ export default function RegisterForm() {
     }
   }
 
+  const submitAnotherRegistration = () => {
+    resetForm()
+    setStatus('idle')
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  if (status === 'success' && successfulPaymentOption === 'pay_later') {
+    return (
+      <form ref={formRef} noValidate className="space-y-8">
+        <motion.div
+          ref={successRef}
+          role="status"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="scroll-mt-28 rounded-3xl border border-green-200 bg-green-50 p-6 text-center shadow-sm sm:p-8"
+        >
+          <CheckCircle className="mx-auto mb-4 text-green-500" size={42} />
+          <h2 className="font-display text-2xl font-bold text-navy">Registration submitted successfully</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-green-800">{message}</p>
+          <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-gray-600">
+            You can complete payment later using the QR code or bank details available through Already Registered.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button to="/" variant="primary" size="sm">Go to Home</Button>
+            <Button onClick={submitAnotherRegistration} variant="outline" size="sm">Submit Another Registration</Button>
+          </div>
+        </motion.div>
+      </form>
+    )
+  }
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-8">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-8">
       <FormHeader />
 
       {(errors.length > 0 || (status === 'error' && message)) && (
@@ -368,6 +453,11 @@ export default function RegisterForm() {
         <SectionLabel>E-mail</SectionLabel>
         <input type="email" placeholder="ex:myname@example.com*" required value={form.email} onChange={(e) => update('email', e.target.value)} className="input-modern" />
         <FieldError error={fieldErrors.email} />
+        {fieldErrors.email === DUPLICATE_EMAIL_MESSAGE && (
+          <Link to="/" className="mt-2 inline-block text-sm font-semibold text-primary hover:text-primary-dark">
+            Already Registered
+          </Link>
+        )}
       </div>
 
       {/* Section & Occupation */}
@@ -494,7 +584,7 @@ export default function RegisterForm() {
         />
       </div>
 
-      {status === 'success' && (
+      {status === 'success' && successfulPaymentOption === 'pay_now' && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
