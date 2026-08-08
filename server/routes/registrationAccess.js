@@ -23,7 +23,11 @@ import {
 } from '../lib/crypto.js'
 import { paymentState, canUploadPaymentProof } from '../lib/paymentState.js'
 import { enforceCooldown, hitRateLimit } from '../lib/rateLimit.js'
-import { sendOtpEmail, sendAdminPaymentProofNotification } from '../mailer.js'
+import {
+  sendOtpEmail,
+  sendAdminPaymentProofNotification,
+  sendPaymentReceivedEmail,
+} from '../mailer.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const uploadsDir = path.join(__dirname, '..', 'uploads')
@@ -550,6 +554,15 @@ router.post('/registrations/:id/payment-proof', requireAttendee, handlePaymentPr
     } catch (emailErr) {
       console.error('Proof-upload admin notification failed (upload saved):', emailErr.message)
       notificationWarning = 'Payment proof was saved, but the admin notification could not be sent.'
+    }
+
+    try {
+      await sendPaymentReceivedEmail(updated)
+    } catch (emailErr) {
+      console.error('Proof-upload attendee confirmation email failed (upload saved):', emailErr.message)
+      if (!notificationWarning) {
+        notificationWarning = 'Payment proof was saved, but your confirmation email could not be sent.'
+      }
     }
 
     const response = {

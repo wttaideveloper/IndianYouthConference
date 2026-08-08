@@ -3,7 +3,12 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import { sendAdminRegistrationNotification } from '../mailer.js'
+import {
+  sendAdminRegistrationNotification,
+  sendCompletePaymentEmail,
+  sendPaymentReceivedEmail,
+  sendRegistrationConfirmationEmail,
+} from '../mailer.js'
 import Registration from '../models/Registration.js'
 import { isDBConnected } from '../db.js'
 import { isValidRegistrationPhoneNumber } from '../lib/countryPhoneValidation.js'
@@ -203,6 +208,19 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       await Registration.findByIdAndUpdate(saved._id, { emailSent: true })
     } catch (emailErr) {
       console.error('Admin notification email failed (registration saved):', emailErr.message)
+    }
+
+    try {
+      await sendRegistrationConfirmationEmail(data)
+    } catch (emailErr) {
+      console.error('Attendee registration confirmation email failed (registration saved):', emailErr.message)
+    }
+
+    try {
+      if (paymentOption === 'pay_later') await sendCompletePaymentEmail(data)
+      else await sendPaymentReceivedEmail(data)
+    } catch (emailErr) {
+      console.error('Attendee payment-status email failed (registration saved):', emailErr.message)
     }
 
     const successMessage =

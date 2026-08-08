@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { getEventDetails } from './lib/eventDetails.js'
 
 let transporter = null
 
@@ -101,6 +102,85 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+function formatAttendeeEventDetails(event) {
+  return `
+    <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:20px 0;color:#4a5568;font-size:14px;line-height:1.6;">
+      <p style="margin:0 0 6px;"><strong style="color:#0b0e37;">${escapeHtml(event.name)}</strong></p>
+      <p style="margin:0 0 6px;"><strong>Dates:</strong> ${escapeHtml(event.dates)}</p>
+      <p style="margin:0 0 6px;"><strong>Venue:</strong> ${escapeHtml(event.venue)}<br>${escapeHtml(event.address)}</p>
+      <p style="margin:0;"><strong>Contact:</strong> <a href="mailto:${escapeHtml(event.contactEmail)}" style="color:#e1137b;">${escapeHtml(event.contactEmail)}</a> &middot; ${escapeHtml(event.contactPhone)}</p>
+    </div>
+  `
+}
+
+function formatAttendeeEmail({ heading, body }) {
+  const event = getEventDetails()
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#0b0e37,#e1137b);padding:28px;border-radius:12px 12px 0 0;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">${escapeHtml(heading)}</h1>
+        <p style="color:#ffc107;margin:8px 0 0;font-size:14px;">${escapeHtml(event.name)}</p>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;color:#4a5568;line-height:1.6;">
+        ${body}
+        ${formatAttendeeEventDetails(event)}
+        <p style="margin:24px 0 0;color:#4a5568;">Warm regards,<br><strong>IYC Team</strong></p>
+      </div>
+    </div>
+  `
+}
+
+function paymentOptionLabel(paymentOption) {
+  return paymentOption === 'pay_later' ? 'Pay Later' : 'Pay Now'
+}
+
+function formatRegistrationConfirmationHtml(data) {
+  const rows = [
+    ['Registrant', data.fullName],
+    ['Registration category', data.feeLabel],
+    ['Registration fee', `₹${data.fee}`],
+    ['Payment option', paymentOptionLabel(data.paymentOption)],
+  ]
+    .map(([label, value]) => `<tr><td style="padding:9px 12px;border-bottom:1px solid #eee;font-weight:600;color:#0b0e37;">${escapeHtml(label)}</td><td style="padding:9px 12px;border-bottom:1px solid #eee;">${escapeHtml(value)}</td></tr>`)
+    .join('')
+
+  return formatAttendeeEmail({
+    heading: 'Registration Received',
+    body: `
+      <p style="margin-top:0;">Dear <strong>${escapeHtml(data.fullName)}</strong>,</p>
+      <p>Thank you for registering. We have successfully received your registration.</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">${rows}</table>
+      <p>Please keep this email for your records.</p>
+    `,
+  })
+}
+
+function formatPaymentReceivedHtml(data) {
+  return formatAttendeeEmail({
+    heading: 'Payment Received',
+    body: `
+      <p style="margin-top:0;">Dear <strong>${escapeHtml(data.fullName)}</strong>,</p>
+      <p>Thank you. Your registration has been received, and we have successfully received your payment proof.</p>
+      <p>Our team will verify your payment shortly. You will receive another email once your registration has been verified.</p>
+    `,
+  })
+}
+
+function formatCompletePaymentHtml(data) {
+  return formatAttendeeEmail({
+    heading: 'Complete Your Payment',
+    body: `
+      <p style="margin-top:0;">Dear <strong>${escapeHtml(data.fullName)}</strong>,</p>
+      <p>Your registration has been saved successfully.</p>
+      <p><strong>Your registration fee:</strong> ₹${escapeHtml(data.fee)}</p>
+      <p>Kindly complete your payment before the event begins. You can return to this website anytime and use the <strong>Already Registered</strong> button on the Home page.</p>
+      <p>From there you can:</p>
+      <ul style="margin:0 0 16px;padding-left:22px;"><li>complete your payment</li><li>upload your payment proof</li></ul>
+      <p>Once payment has been verified, your registration will be confirmed.</p>
+    `,
+  })
 }
 
 function formatPaymentProofHtml({ registrationId, fullName, email, previousPaymentState }) {
@@ -267,6 +347,33 @@ export async function sendAdminComposedEmail({
     subject: renderedSubject,
     text: renderedMessage,
     html: formatAdminComposedHtml(message, data),
+  })
+}
+
+/** Confirm that an attendee's registration was received, regardless of payment option. */
+export async function sendRegistrationConfirmationEmail(data) {
+  await sendMail({
+    to: data.email,
+    subject: 'Registration Received – Indian Youth Conference 2026',
+    html: formatRegistrationConfirmationHtml(data),
+  })
+}
+
+/** Confirm receipt of a Pay Now attendee's uploaded payment proof. */
+export async function sendPaymentReceivedEmail(data) {
+  await sendMail({
+    to: data.email,
+    subject: 'Payment Received – Awaiting Verification',
+    html: formatPaymentReceivedHtml(data),
+  })
+}
+
+/** Guide a Pay Later attendee back to payment and proof submission. */
+export async function sendCompletePaymentEmail(data) {
+  await sendMail({
+    to: data.email,
+    subject: 'Complete Your Payment – Indian Youth Conference 2026',
+    html: formatCompletePaymentHtml(data),
   })
 }
 
