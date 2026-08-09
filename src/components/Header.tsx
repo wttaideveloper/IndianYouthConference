@@ -4,11 +4,13 @@ import { Menu, X, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { NAV_LINKS, EVENT } from '../data/content'
 import Button from './Button'
+import RegistrationAccessModal from './RegistrationAccessModal'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [logoError, setLogoError] = useState(false)
+  const [isRegistrationAccessOpen, setIsRegistrationAccessOpen] = useState(false)
   const { pathname } = useLocation()
   const isHome = pathname === '/'
 
@@ -112,7 +114,15 @@ export default function Header() {
               ))}
             </nav>
 
-            <div className="hidden lg:flex items-center shrink-0">
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsRegistrationAccessOpen(true)}
+                className="whitespace-nowrap"
+              >
+                Already Registered?
+              </Button>
               <Button to="/register" variant="primary" size="sm">
                 <Sparkles size={14} />
                 Register
@@ -176,7 +186,17 @@ export default function Header() {
                   </NavLink>
                 </motion.div>
               ))}
-              <div className="mt-6 pt-6 border-t border-gray-100">
+              <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setIsOpen(false)
+                    setIsRegistrationAccessOpen(true)
+                  }}
+                >
+                  Already Registered?
+                </Button>
                 <div onClick={() => setIsOpen(false)}>
                   <Button to="/register" variant="primary" className="w-full">
                     Register Now
@@ -187,6 +207,10 @@ export default function Header() {
           </motion.div>
         )}
       </AnimatePresence>
+      <RegistrationAccessModal
+        isOpen={isRegistrationAccessOpen}
+        onClose={() => setIsRegistrationAccessOpen(false)}
+      />
     </>
   )
 }
