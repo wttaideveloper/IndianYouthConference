@@ -11,6 +11,7 @@ export default function Footer() {
       { label: 'Refund Policy', path: '/refund-policy' },
       { label: 'Cancellation Policy', path: '/cancellation-policy' },
       { label: 'Customer Care & Grievance', path: '/customer-care-grievance-redressal' },
+      { label: 'Merchant & Legal Information', path: '/merchant-legal-information' },
     ],
     [
       { label: 'Digital Delivery Policy', path: '/digital-delivery-policy' },

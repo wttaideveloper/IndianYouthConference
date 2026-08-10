@@ -1023,6 +1023,82 @@ export const POLICIES: Policy[] = [
       },
     ],
   },
+  {
+    path: '/merchant-legal-information',
+    footerLabel: 'Merchant & Legal Information',
+    title: 'Merchant & Legal Information',
+    browserTitle: 'Merchant & Legal Information | Indian Youth Conference',
+    subtitle: 'Merchant, legal, and payment information',
+    sections: [
+      {
+        heading: 'Merchant Information',
+        blocks: [
+          {
+            type: 'details',
+            details: [
+              { label: 'Merchant Legal Name', value: 'Indian Youth Conference (IYC)' },
+              { label: 'Entity Type', value: 'Trust' },
+              {
+                label: 'Registered Address',
+                value: 'Building Number 20/1416/1, Pax Street 1, Nellikkunnu, Thrissur, Kerala - 680005, India',
+              },
+              { label: 'Business Activity', value: 'Conference registration fees' },
+              { label: 'GST Status', value: 'Not Registered' },
+              { label: 'DARPAN Registration', value: 'KL/2024/0441135' },
+              { label: 'PAN', value: 'AACTI3436Q' },
+              { label: 'Authorised Representative Name', value: 'Elvin Baby John' },
+              { label: 'Designation', value: 'President' },
+              { label: 'Key Managerial Person / Authorised Representative', value: 'Elvin Baby John, President' },
+              { label: 'Mobile', value: '+91 7012963015', href: 'tel:+917012963015' },
+              { label: 'Email', value: 'elvinbabyjohn@gmail.com', href: 'mailto:elvinbabyjohn@gmail.com' },
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Customer Support',
+        blocks: [
+          {
+            type: 'details',
+            details: [
+              { label: 'Phone', value: '+91 7012963015', href: 'tel:+917012963015' },
+              { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Grievance Redressal',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'For complaints, payment-related concerns, refunds, registration issues, or other grievances, customers may contact:',
+          },
+          {
+            type: 'details',
+            details: [
+              { label: 'Mr. Ronald Stephen', value: '+91 99017 98901', href: 'tel:+919901798901' },
+              { label: 'Dr. Hyacinth Austin', value: '+91 97915 08601', href: 'tel:+919791508601' },
+              { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
+            ],
+          },
+        ],
+      },
+      {
+        heading: 'Payment Information',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Payments made through this website are collected towards conference registration fees and other services specifically displayed at the time of registration. Applicable payment gateway charges, taxes, or other charges, if any, will be displayed or communicated as applicable.',
+          },
+          {
+            type: 'paragraph',
+            text: 'Please refer to our Terms & Conditions, Privacy Policy, Refund Policy, and Cancellation Policy for further information.',
+          },
+        ],
+      },
+    ],
+  },
 ]
 
 export function getPolicyByPath(pathname: string) {
