@@ -4,6 +4,7 @@ export const EVENT = {
   tagline: 'Sealed For A Purpose',
   subtitle: 'GET READY TO GIVE YOURSELF TO CHRIST',
   dates: 'October 16–20, 2026',
+  registrationDates: { min: '2026-10-13', max: '2026-10-21' },
   venue: 'Mount Zion Campus, Lena Vilakku, Pilivalam P.O, Thirumayam Tk, Pudukkottai, Tamil Nadu 622507',
   countdownDate: new Date('2026-10-16T00:00:00'),
   email: 'indianyouthconference@gmail.com',
@@ -186,16 +187,16 @@ export const FAQS = [
 
 export const COORDINATORS = [
   { name: 'Baphylla Sajan Lyngdoh', role: 'Core Committee', phone: '+91 8123941065' },
-  { name: 'Elvin Baby John', role: 'Core Committee', phone: '+91 7012963015' },
+  { name: 'Elvin Baby John', role: 'Core Committee', phone: '+91 9895387922' },
   { name: 'Austin Navis', role: 'Core Committee', phone: '+91 9823606401' },
   { name: 'Dawn Fernandez', role: 'Core Committee', phone: '' },
   { name: 'Naveen Kumar', role: 'Core Committee', phone: '+91 9418724828' },
-  { name: 'Pranith Kumar', role: 'Core Committee', phone: '+91 9618040752' },
+  { name: 'Praneeth Kumar', role: 'Core Committee', phone: '+91 9618040752' },
   { name: 'Jacob Kunthara', role: 'Working Committee', phone: '+91 9809619514' },
   { name: 'Hamedon Kyrshan Nongkhlaw', role: 'Working Committee', phone: '+91 8257830018' },
   { name: 'Lavanya Kumar', role: 'Working Committee', phone: '+91 9582260980' },
   { name: 'Raja Thangamuthu', role: 'Working Committee', phone: '+91 8879005569' },
-  { name: 'D. G Leonarld', role: 'Working Committee', phone: '+91 9663148491' },
+  { name: 'Leonard D G', role: 'Working Committee', phone: '+91 9663148491' },
   { name: 'Ronald Stephen', role: 'Working Committee', phone: '+91 9901798901' },
   { name: 'Deric Sherwin Baby', role: 'Working Committee', phone: '+91 7795353400' },
   { name: 'Akash PT', role: 'Working Committee', phone: '+91 8078311542' },
@@ -204,6 +205,13 @@ export const COORDINATORS = [
   { name: 'Adia Praveen', role: 'Working Committee', phone: '+91 9845875103' },
   { name: 'Utkarsha Kamble', role: 'Working Committee', phone: '+91 7066716346' },
   { name: 'Mark Nathaniel Shankar', role: 'Working Committee', phone: '+91 8104074376' },
+  { name: 'Harishar', role: 'Working Committee', phone: '+91 6360847800' },
+  { name: 'Hyacinth Austin', role: 'Working Committee', phone: '+91 9791508601' },
+  { name: 'Jesson Patrick', role: 'Working Committee', phone: '+91 7092433847' },
+  { name: 'Martin Mundu', role: 'Working Committee', phone: '+91 8630445075' },
+  { name: 'Pearly', role: 'Working Committee', phone: '+91 9241801226' },
+  { name: 'Santhiel Pradhan', role: 'Working Committee', phone: '+91 9101486360' },
+  { name: 'Sowmya Evangelin', role: 'Working Committee', phone: '+91 8122637615' },
 ]
 
 export const GALLERY_SECTIONS = [
