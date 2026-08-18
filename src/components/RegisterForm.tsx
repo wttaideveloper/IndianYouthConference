@@ -256,7 +256,16 @@ export default function RegisterForm() {
     if (!form.sectionConference.trim()) errs.sectionConference = 'Section / Conference is required'
     if (!form.occupation) errs.occupation = 'Please select an occupation'
     if (!form.arrivalDate) errs.arrivalDate = 'Expected date of arrival is required'
+    else if (form.arrivalDate < EVENT.registrationDates.min || form.arrivalDate > EVENT.registrationDates.max) {
+      errs.arrivalDate = 'Arrival date must be between Oct 13 and Oct 21, 2026'
+    }
     if (!form.departureDate) errs.departureDate = 'Expected date of departure is required'
+    else if (form.departureDate < EVENT.registrationDates.min || form.departureDate > EVENT.registrationDates.max) {
+      errs.departureDate = 'Departure date must be between Oct 13 and Oct 21, 2026'
+    }
+    if (form.arrivalDate && form.departureDate && form.departureDate < form.arrivalDate) {
+      errs.departureDate = 'Departure date cannot be before the arrival date'
+    }
     if (!form.howDidYouKnow) errs.howDidYouKnow = 'Please select how you heard about IYC'
     if (!form.pastAttendance) errs.pastAttendance = 'Please indicate if you attended IYC before'
     if (!form.emergencyContactName.trim()) errs.emergencyContactName = 'Emergency contact name is required'
@@ -490,15 +499,16 @@ export default function RegisterForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Arrival *</label>
-            <input type="date" required value={form.arrivalDate} onChange={(e) => update('arrivalDate', e.target.value)} className="input-modern" />
+            <input type="date" required min={EVENT.registrationDates.min} max={EVENT.registrationDates.max} value={form.arrivalDate} onChange={(e) => update('arrivalDate', e.target.value)} className="input-modern" />
             <FieldError error={fieldErrors.arrivalDate} />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Departure *</label>
-            <input type="date" required value={form.departureDate} onChange={(e) => update('departureDate', e.target.value)} className="input-modern" />
+            <input type="date" required min={EVENT.registrationDates.min} max={EVENT.registrationDates.max} value={form.departureDate} onChange={(e) => update('departureDate', e.target.value)} className="input-modern" />
             <FieldError error={fieldErrors.departureDate} />
           </div>
         </div>
+        <p className="mt-2 text-xs text-gray-500">Select a date between {EVENT.registrationDates.min} and {EVENT.registrationDates.max}.</p>
       </div>
 
       {/* Program preference */}
@@ -519,11 +529,6 @@ export default function RegisterForm() {
             </label>
           ))}
         </div>
-      </div>
-
-      {/* Accommodation notice */}
-      <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-800">
-        Accommodation at the camp site will be in dorm rooms and tents on raised concrete platforms.
       </div>
 
       {/* Referral & history */}

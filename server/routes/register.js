@@ -93,6 +93,17 @@ function validateBody(body) {
   if (!OCCUPATIONS.includes(body.occupation)) errors.push('Please select a valid occupation')
   if (!body.arrivalDate) errors.push('Expected date of arrival is required')
   if (!body.departureDate) errors.push('Expected date of departure is required')
+  const MIN_DATE = '2026-10-13'
+  const MAX_DATE = '2026-10-21'
+  if (body.arrivalDate && (body.arrivalDate < MIN_DATE || body.arrivalDate > MAX_DATE)) {
+    errors.push('Arrival date must be between Oct 13 and Oct 21, 2026')
+  }
+  if (body.departureDate && (body.departureDate < MIN_DATE || body.departureDate > MAX_DATE)) {
+    errors.push('Departure date must be between Oct 13 and Oct 21, 2026')
+  }
+  if (body.arrivalDate && body.departureDate && body.departureDate < body.arrivalDate) {
+    errors.push('Departure date cannot be before the arrival date')
+  }
   if (body.programPreference && !PROGRAM_PREFERENCES.includes(body.programPreference)) {
     errors.push('Invalid program preference')
   }
