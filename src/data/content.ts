@@ -186,12 +186,12 @@ export const FAQS = [
 ]
 
 export const COORDINATORS = [
-  { name: 'Baphylla Sajan Lyngdoh', role: 'Core Committee', phone: '+91 8123941065' },
-  { name: 'Elvin Baby John', role: 'Core Committee', phone: '+91 9895387922' },
-  { name: 'Austin Navis', role: 'Core Committee', phone: '+91 9823606401' },
-  { name: 'Dawn Fernandez', role: 'Core Committee', phone: '' },
-  { name: 'Naveen Kumar', role: 'Core Committee', phone: '+91 9418724828' },
-  { name: 'Praneeth Kumar', role: 'Core Committee', phone: '+91 9618040752' },
+  { name: 'Baphylla Sajan Lyngdoh', role: 'Working Committee', phone: '+91 8123941065' },
+  { name: 'Elvin Baby John', role: 'Working Committee', phone: '+91 9895387922' },
+  { name: 'Austin Navis', role: 'Working Committee', phone: '+91 9823606401' },
+  { name: 'Dawn Fernandez', role: 'Working Committee', phone: '' },
+  { name: 'Naveen Kumar', role: 'Working Committee', phone: '+91 9418724828' },
+  { name: 'Praneeth Kumar', role: 'Working Committee', phone: '+91 9618040752' },
   { name: 'Jacob Kunthara', role: 'Working Committee', phone: '+91 9809619514' },
   { name: 'Hamedon Kyrshan Nongkhlaw', role: 'Working Committee', phone: '+91 8257830018' },
   { name: 'Lavanya Kumar', role: 'Working Committee', phone: '+91 9582260980' },

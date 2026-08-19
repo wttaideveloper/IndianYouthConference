@@ -7,9 +7,6 @@ import MapEmbed from '../components/MapEmbed'
 import { COORDINATORS, EVENT, SOCIAL } from '../data/content'
 
 export default function Contact() {
-  const core = COORDINATORS.filter((c) => c.role === 'Core Committee')
-  const working = COORDINATORS.filter((c) => c.role === 'Working Committee')
-
   return (
     <>
       <PageHero
@@ -76,20 +73,16 @@ export default function Contact() {
             subtitle="Always there to guide, serve & support you with your evangelistic & spiritual needs"
           />
 
-          {[
-            { label: 'Core Committee', members: core },
-            { label: 'Working Committee', members: working },
-          ].map((group) => (
-            <div key={group.label} className="mb-12">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-secondary/15 flex items-center justify-center">
-                  <Users size={18} className="text-primary" />
-                </div>
-                <h3 className="font-display font-bold text-navy text-lg">{group.label}</h3>
-                <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-secondary/15 flex items-center justify-center">
+                <Users size={18} className="text-primary" />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {group.members.map((coord, i) => (
+              <h3 className="font-display font-bold text-navy text-lg">Working Committee</h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {COORDINATORS.map((coord, i) => (
                   <motion.div
                     key={coord.name}
                     initial={{ opacity: 0, y: 15 }}
@@ -116,7 +109,6 @@ export default function Contact() {
                 ))}
               </div>
             </div>
-          ))}
         </div>
       </section>
 
