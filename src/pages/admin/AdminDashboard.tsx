@@ -25,6 +25,7 @@ import {
   fetchStats,
   exportCsv,
   paymentStatusLabel,
+  isViewer,
   type Registration,
   type RegistrationFilters,
 } from '../../lib/adminApi'
@@ -67,6 +68,7 @@ function activeFilterCount(filters: RegistrationFilters) {
 }
 
 export default function AdminDashboard() {
+  const viewer = isViewer()
   const [filters, setFilters] = useState<RegistrationFilters>(EMPTY_FILTERS)
   const [searchInput, setSearchInput] = useState('')
   const [items, setItems] = useState<Registration[]>([])
@@ -154,10 +156,13 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Dashboard</p>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-navy">Registrations</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {stats.total} total · {stats.pending} awaiting payment review
-          </p>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-navy flex items-center gap-2">
+            Registrations
+            {viewer && <span className="text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1">View only</span>}
+          </h1>
+           <p className="text-gray-400 text-sm mt-1">
+             {stats.total} total · {stats.pending} awaiting payment review
+           </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -169,14 +174,16 @@ export default function AdminDashboard() {
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button
-            type="button"
-            onClick={() => { setEmailRegistrationId(null); setShowEmailModal(true) }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg transition-all"
-          >
-            <Mail size={15} />
-            <span className="hidden sm:inline">Send Email</span>
-          </button>
+          {!viewer && (
+            <button
+              type="button"
+              onClick={() => { setEmailRegistrationId(null); setShowEmailModal(true) }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg transition-all"
+            >
+              <Mail size={15} />
+              <span className="hidden sm:inline">Send Email</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleExport}
@@ -410,23 +417,27 @@ export default function AdminDashboard() {
                           >
                             <Eye size={15} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => { setEditOnOpen(true); setSelectedId(item._id) }}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                            title="Edit"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleQuickDelete(e, item)}
-                            disabled={deletingId === item._id}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50"
-                            title="Delete"
-                          >
-                            {deletingId === item._id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                          </button>
+                          {!viewer && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => { setEditOnOpen(true); setSelectedId(item._id) }}
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                                title="Edit"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleQuickDelete(e, item)}
+                                disabled={deletingId === item._id}
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50"
+                                title="Delete"
+                              >
+                                {deletingId === item._id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

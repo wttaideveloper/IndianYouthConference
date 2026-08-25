@@ -5,7 +5,7 @@ import mongoose from 'mongoose'
 import path from 'path'
 import Registration from '../models/Registration.js'
 import AdminEmailCampaign from '../models/AdminEmailCampaign.js'
-import { requireAdmin } from '../middleware/auth.js'
+import { requireAdmin, requireRole } from '../middleware/auth.js'
 import { isDBConnected } from '../db.js'
 import {
   validateRegistrationFields,
@@ -352,7 +352,7 @@ router.post('/emails/preview', async (req, res) => {
   }
 })
 
-router.post('/emails/send', async (req, res) => {
+router.post('/emails/send', requireRole('admin'), async (req, res) => {
   if (!isDBConnected()) {
     return res.status(503).json({ success: false, message: 'Database not connected' })
   }
@@ -615,7 +615,7 @@ router.get('/registrations/:id/screenshot', async (req, res) => {
   fs.createReadStream(filePath).pipe(res)
 })
 
-router.patch('/registrations/:id', async (req, res) => {
+router.patch('/registrations/:id', requireRole('admin'), async (req, res) => {
   if (!isDBConnected()) {
     return res.status(503).json({ success: false, message: 'Database not connected' })
   }
@@ -724,7 +724,7 @@ router.patch('/registrations/:id', async (req, res) => {
   })
 })
 
-router.delete('/registrations/:id', async (req, res) => {
+router.delete('/registrations/:id', requireRole('admin'), async (req, res) => {
   if (!isDBConnected()) {
     return res.status(503).json({ success: false, message: 'Database not connected' })
   }

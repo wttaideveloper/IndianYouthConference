@@ -1,10 +1,11 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom'
 import { LogOut, LayoutDashboard, ExternalLink, Calendar, MapPin } from 'lucide-react'
-import { isLoggedIn, clearToken } from '../../lib/adminApi'
+import { isLoggedIn, clearToken, getAdminRole } from '../../lib/adminApi'
 import { EVENT } from '../../data/content'
 
 export default function AdminLayout() {
   const location = useLocation()
+  const role = getAdminRole()
 
   if (!isLoggedIn()) {
     return <Navigate to="/admin/login" replace />
@@ -20,8 +21,11 @@ export default function AdminLayout() {
               <LayoutDashboard size={20} />
             </div>
             <div>
-              <p className="font-display font-bold text-sm">IYC Admin</p>
-              <p className="text-[10px] text-white/50 uppercase tracking-widest">Portal</p>
+              <p className="font-display font-bold text-sm flex items-center gap-2">
+                IYC Admin
+                {role === 'viewer' && <span className="text-[9px] bg-white/15 border border-white/20 rounded-full px-1.5 py-0.5">View only</span>}
+              </p>
+              <p className="text-[10px] text-white/50 uppercase tracking-widest">Portal {role ? `· ${role}` : ''}</p>
             </div>
           </Link>
         </div>

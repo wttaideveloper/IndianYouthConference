@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Loader2, Save, ImageIcon, MapPin, Calendar,
-  Phone, Mail, CheckCircle, Clock, XCircle, ZoomIn, Pencil, Trash2, AlertTriangle,
+  Phone, Mail, CheckCircle, Clock, XCircle, ZoomIn, Pencil, Trash2, AlertTriangle, MessageCircle,
 } from 'lucide-react'
 import {
   fetchRegistration,
@@ -10,6 +10,7 @@ import {
   deleteRegistration,
   screenshotUrl,
   getToken,
+  isViewer,
   type Registration,
   type RegistrationUpdate,
 } from '../../lib/adminApi'
@@ -63,6 +64,13 @@ function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
+function getWhatsAppHref(phone: string) {
+  const digits = phone.replace(/\D/g, '').replace(/^0+/, '').replace(/^91/, '')
+  const waDigits = `91${digits}`
+  const message = "Hi, this is regarding your IYC 2026 registration. We'd like to assist you with your travel/payment/queries."
+  return `https://wa.me/${waDigits}?text=${encodeURIComponent(message)}`
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -75,6 +83,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputCls = 'w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20'
 
 export default function RegistrationModal({ id, startEditing = false, onClose, onUpdated, onSendEmail }: Props) {
+  const viewer = isViewer()
   const [item, setItem] = useState<Registration | null>(null)
   const [form, setForm] = useState<FormState | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -134,6 +143,10 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
   }, [id, startEditing])
 
   const handleSave = async () => {
+    if (viewer) {
+      setError('View only access — you cannot save changes.')
+      return
+    }
     if (!id || !form) return
     setSaving(true)
     setError('')
@@ -197,7 +210,10 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
           >
             <div className="relative bg-gradient-to-r from-navy to-navy-mid px-6 py-5 shrink-0">
               <div className="absolute top-4 right-4 flex items-center gap-2">
-                {!loading && item && !isEditing && (
+                {viewer && !loading && item && !isEditing && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest bg-white/15 text-white border border-white/20 rounded-full px-2.5 py-1">View only</span>
+                )}
+                {!loading && item && !isEditing && !viewer && (
                   <>
                     {onSendEmail && (
                       <button
@@ -437,7 +453,34 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     </div>
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50/80">
                       <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm text-primary"><Phone size={14} /></div>
-                      <div><p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Phone</p><p className="text-sm text-navy font-medium">{item.phone}</p></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Phone</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm text-navy font-medium">{item.phone || '—'}</p>
+                          {item.phone && (
+                            <span className="inline-flex items-center gap-1.5 ml-1">
+                              <a
+                                href={`tel:${item.phone.replace(/\s/g, '')}`}
+                                className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-primary hover:bg-primary hover:text-white hover:border-primary transition-colors shadow-sm"
+                                title="Call"
+                                aria-label={`Call ${item.phone}`}
+                              >
+                                <Phone size={14} />
+                              </a>
+                              <a
+                                href={getWhatsAppHref(item.phone)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-colors shadow-sm"
+                                title="WhatsApp"
+                                aria-label={`WhatsApp ${item.phone}`}
+                              >
+                                <MessageCircle size={14} />
+                              </a>
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50/80 sm:col-span-2">
                       <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm text-secondary"><MapPin size={14} /></div>
@@ -493,15 +536,16 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     <div className="grid grid-cols-3 gap-2">
                       {STATUS_OPTIONS.map(({ value, label, icon: Icon, color, active }) => {
                         const locked = !hasScreenshot && value === 'verified'
+                        const disabled = locked || viewer
                         return (
                           <button
                             key={value}
                             type="button"
                             onClick={() => updateForm('status', value)}
-                            disabled={locked}
-                            title={locked ? 'Cannot verify until a payment screenshot is uploaded' : label}
+                            disabled={disabled}
+                            title={viewer ? 'View only — cannot change status' : locked ? 'Cannot verify until a payment screenshot is uploaded' : label}
                             className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${
-                              locked
+                              disabled
                                 ? 'opacity-40 cursor-not-allowed'
                                 : form.status === value
                                   ? `${active} ring-2`
@@ -514,11 +558,14 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                         )
                       })}
                     </div>
-                    {!hasScreenshot && (
+                    {!hasScreenshot && !viewer && (
                       <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
                         <AlertTriangle size={13} className="shrink-0" />
                         Cannot verify until a payment screenshot is uploaded.
                       </p>
+                    )}
+                    {viewer && (
+                      <p className="text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">View only — status cannot be changed.</p>
                     )}
                     <Field label="Admin Notes">
                       <textarea
@@ -526,7 +573,8 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                         onChange={(e) => updateForm('adminNotes', e.target.value)}
                         rows={2}
                         className={`${inputCls} resize-none`}
-                        placeholder="Add a note..."
+                        placeholder={viewer ? 'View only' : 'Add a note...'}
+                        disabled={viewer}
                       />
                     </Field>
                   </div>
@@ -536,7 +584,11 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
 
             {item && form && !loading && !showDeleteConfirm && (
               <div className="shrink-0 border-t border-gray-100 px-6 py-4 flex gap-3 bg-white">
-                {isEditing ? (
+                {viewer ? (
+                  <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                    Close
+                  </button>
+                ) : isEditing ? (
                   <>
                     <button type="button" onClick={cancelEdit} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                       Cancel

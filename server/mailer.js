@@ -105,12 +105,23 @@ function escapeHtml(value) {
 }
 
 function formatAttendeeEventDetails(event) {
+  const t = event.travel
+  const travelBox = t ? `
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin:14px 0 0;color:#4a5568;font-size:13px;line-height:1.6;">
+        <p style="margin:0 0 8px;font-weight:700;color:#92400e;">${escapeHtml(t.heading)}</p>
+        ${t.nearestAirport ? `<p style="margin:0 0 6px;"><strong>Nearest Airport:</strong> ${escapeHtml(t.nearestAirport)}</p>` : ''}
+        ${t.railwayStation ? `<p style="margin:0 0 6px;"><strong>Railway:</strong> ${escapeHtml(t.railwayStation)}</p>` : ''}
+        ${t.busStand ? `<p style="margin:0 0 6px;"><strong>Bus:</strong> ${escapeHtml(t.busStand)}</p>` : ''}
+        ${t.localTransport ? `<p style="margin:0;"><strong>Local Transport:</strong> ${escapeHtml(t.localTransport)}</p>` : ''}
+      </div>
+  ` : ''
   return `
     <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:20px 0;color:#4a5568;font-size:14px;line-height:1.6;">
       <p style="margin:0 0 6px;"><strong style="color:#0b0e37;">${escapeHtml(event.name)}</strong></p>
       <p style="margin:0 0 6px;"><strong>Dates:</strong> ${escapeHtml(event.dates)}</p>
       <p style="margin:0 0 6px;"><strong>Venue:</strong> ${escapeHtml(event.venue)}<br>${escapeHtml(event.address)}</p>
       <p style="margin:0;"><strong>Contact:</strong> <a href="mailto:${escapeHtml(event.contactEmail)}" style="color:#e1137b;">${escapeHtml(event.contactEmail)}</a> &middot; ${escapeHtml(event.contactPhone)}</p>
+      ${travelBox}
     </div>
   `
 }
@@ -210,6 +221,16 @@ function formatPaymentProofHtml({ registrationId, fullName, email, previousPayme
 }
 
 function formatVerifiedHtml(data) {
+  const event = getEventDetails()
+  const t = event.travel
+  const travelBox = t ? `
+        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin:20px 0;color:#4a5568;font-size:13px;line-height:1.6;">
+          <p style="margin:0 0 8px;font-weight:700;color:#92400e;">${escapeHtml(t.heading)}</p>
+          ${t.nearestAirport ? `<p style="margin:0 0 6px;"><strong>Nearest Airport:</strong> ${escapeHtml(t.nearestAirport)}</p>` : ''}
+          ${t.railwayStation ? `<p style="margin:0 0 6px;"><strong>Railway:</strong> ${escapeHtml(t.railwayStation)}</p>` : ''}
+          ${t.busStand ? `<p style="margin:0 0 6px;"><strong>Bus:</strong> ${escapeHtml(t.busStand)}</p>` : ''}
+          ${t.localTransport ? `<p style="margin:0;"><strong>Local Transport:</strong> ${escapeHtml(t.localTransport)}</p>` : ''}
+        </div>` : ''
   return `
     <div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#0b0e37,#e1137b);padding:28px;border-radius:12px 12px 0 0;">
@@ -220,24 +241,24 @@ function formatVerifiedHtml(data) {
         <p style="color:#4a5568;line-height:1.6;">Dear <strong>${data.fullName}</strong>,</p>
         <p style="color:#4a5568;line-height:1.6;">
           Great news! Your registration and payment for the Indian Youth Conference 2026
-          (October 16–20, 2026) have been <strong>verified</strong> by our team.
+          (${escapeHtml(event.dates)}) have been <strong>verified</strong> by our team.
         </p>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:20px 0;">
           <p style="margin:0 0 8px;color:#166534;font-weight:600;">Your confirmed registration:</p>
-          <p style="margin:4px 0;color:#4a5568;"><strong>Section:</strong> ${data.sectionConference}</p>
-          <p style="margin:4px 0;color:#4a5568;"><strong>Fee:</strong> ₹${data.fee} (${data.feeLabel})</p>
-          <p style="margin:4px 0;color:#4a5568;"><strong>Arrival:</strong> ${data.arrivalDate}</p>
-          <p style="margin:4px 0;color:#4a5568;"><strong>Departure:</strong> ${data.departureDate}</p>
-          <p style="margin:4px 0;color:#4a5568;"><strong>Program:</strong> ${data.programPreference}</p>
+          <p style="margin:4px 0;color:#4a5568;"><strong>Section:</strong> ${escapeHtml(data.sectionConference)}</p>
+          <p style="margin:4px 0;color:#4a5568;"><strong>Fee:</strong> ₹${escapeHtml(data.fee)} (${escapeHtml(data.feeLabel)})</p>
+          <p style="margin:4px 0;color:#4a5568;"><strong>Arrival:</strong> ${escapeHtml(data.arrivalDate)}</p>
+          <p style="margin:4px 0;color:#4a5568;"><strong>Departure:</strong> ${escapeHtml(data.departureDate)}</p>
+          <p style="margin:4px 0;color:#4a5568;"><strong>Program:</strong> ${escapeHtml(data.programPreference)}</p>
         </div>
         <p style="color:#4a5568;line-height:1.6;">
-          <strong>Venue:</strong> Mount Zion campus, Lena Vilakku, Pilivalam P.O, Thirumayam Tk,
-          Pudukkottai, Tamil Nadu 622507
+          <strong>Venue:</strong> ${escapeHtml(event.venue)}, ${escapeHtml(event.address)}
         </p>
+        ${travelBox}
         <p style="color:#4a5568;line-height:1.6;">
           For questions, reach us at
           <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>
-          or call <strong>+91 8123941065</strong>.
+          or call <strong>${escapeHtml(event.contactPhone)}</strong>.
         </p>
         <p style="color:#4a5568;margin-top:24px;">We look forward to seeing you!<br><strong>IYC Team</strong></p>
       </div>

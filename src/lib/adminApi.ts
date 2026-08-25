@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'iyc_admin_token'
+const ROLE_KEY = 'iyc_admin_role'
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY)
@@ -10,10 +11,32 @@ export function setToken(token: string) {
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(ROLE_KEY)
 }
 
 export function isLoggedIn() {
   return Boolean(getToken())
+}
+
+export function getAdminRole(): string | null {
+  const stored = localStorage.getItem(ROLE_KEY)
+  if (stored) return stored
+  const token = getToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.role || null
+  } catch {
+    return null
+  }
+}
+
+export function isViewer(): boolean {
+  return getAdminRole() === 'viewer'
+}
+
+export function setAdminRole(role: string) {
+  if (role) localStorage.setItem(ROLE_KEY, role)
 }
 
 async function adminFetch(path: string, options: RequestInit = {}) {
@@ -45,6 +68,7 @@ export async function login(username: string, password: string) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.message || 'Login failed')
   setToken(data.token)
+  if (data.role) setAdminRole(data.role)
   return data
 }
 
