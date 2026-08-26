@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -97,7 +97,6 @@ function FieldError({ error }: { error?: string }) {
 
 export default function RegisterForm() {
   const formRef = useRef<HTMLFormElement>(null)
-  const successRef = useRef<HTMLDivElement>(null)
   const [form, setForm] = useState<FormData>(INITIAL)
   const [screenshot, setScreenshot] = useState<File | null>(null)
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
@@ -120,15 +119,6 @@ export default function RegisterForm() {
         : null,
     [form.occupation, form.programPreference],
   )
-
-  useEffect(() => {
-    if (status !== 'success' || successfulPaymentOption !== 'pay_later') return
-
-    const frame = window.requestAnimationFrame(() => {
-      successRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [status, successfulPaymentOption])
 
   const clearFieldError = (field: string) => {
     setFieldErrors((prev) => {
@@ -278,6 +268,66 @@ export default function RegisterForm() {
     return errs
   }
 
+  const FIELD_ID_MAP: Record<string, string> = {
+    firstName: 'firstName',
+    lastName: 'lastName',
+    gender: 'gender',
+    phone: 'phone-local-number',
+    email: 'email',
+    streetAddress: 'streetAddress',
+    city: 'city',
+    state: 'state',
+    postalCode: 'postalCode',
+    sectionConference: 'sectionConference',
+    occupation: 'occupation',
+    arrivalDate: 'arrivalDate',
+    departureDate: 'departureDate',
+    howDidYouKnow: 'howDidYouKnow',
+    pastAttendance: 'pastAttendance',
+    emergencyContactName: 'emergency-contact-name',
+    emergencyContactNumber: 'emergency-contact-number-local-number',
+    screenshot: 'payment-section',
+  }
+
+  const FIELD_ORDER = [
+    'firstName',
+    'lastName',
+    'gender',
+    'phone',
+    'email',
+    'streetAddress',
+    'city',
+    'state',
+    'postalCode',
+    'sectionConference',
+    'occupation',
+    'arrivalDate',
+    'departureDate',
+    'howDidYouKnow',
+    'pastAttendance',
+    'emergencyContactName',
+    'emergencyContactNumber',
+  ] as const
+
+  const focusFirstError = (validationErrors: Record<string, string>, screenshotMissing: boolean) => {
+    const firstErrorKey = FIELD_ORDER.find((key) => key in validationErrors) || (screenshotMissing ? 'screenshot' : null)
+    if (!firstErrorKey) return
+    const targetId = FIELD_ID_MAP[firstErrorKey]
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(targetId) || document.querySelector(`[data-field="${firstErrorKey}"]`) as HTMLElement | null
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if ('focus' in el && typeof (el as HTMLElement).focus === 'function') {
+          ;(el as HTMLElement).focus({ preventScroll: true } as FocusOptions)
+        } else {
+          const focusable = el.querySelector('input, select, textarea, button') as HTMLElement | null
+          focusable?.focus({ preventScroll: true } as FocusOptions)
+          focusable?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+    })
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setErrors([])
@@ -293,6 +343,7 @@ export default function RegisterForm() {
     if (Object.keys(validationErrors).length > 0 || screenshotMissing) {
       if (Object.keys(validationErrors).length > 0) setFieldErrors(validationErrors)
       setStatus('error')
+      focusFirstError(validationErrors, screenshotMissing)
       return
     }
 
@@ -322,6 +373,11 @@ export default function RegisterForm() {
           setErrors([])
           setMessage('')
           setFieldErrors((prev) => ({ ...prev, email: DUPLICATE_EMAIL_MESSAGE }))
+          window.requestAnimationFrame(() => {
+            const el = document.getElementById('email') as HTMLElement | null
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el?.focus({ preventScroll: true } as FocusOptions)
+          })
         } else {
           setErrors(data.errors || [data.message || 'Submission failed'])
         }
@@ -351,31 +407,6 @@ export default function RegisterForm() {
     })
   }
 
-  if (status === 'success' && successfulPaymentOption === 'pay_later') {
-    return (
-      <form ref={formRef} noValidate className="space-y-8">
-        <motion.div
-          ref={successRef}
-          role="status"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="scroll-mt-28 rounded-3xl border border-green-200 bg-green-50 p-6 text-center shadow-sm sm:p-8"
-        >
-          <CheckCircle className="mx-auto mb-4 text-green-500" size={42} />
-          <h2 className="font-display text-2xl font-bold text-navy">Registration submitted successfully</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-green-800">{message}</p>
-          <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-gray-600">
-            You can complete payment later using the QR code or bank details available through Already Registered.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Button to="/" variant="primary" size="sm">Go to Home</Button>
-            <Button onClick={submitAnotherRegistration} variant="outline" size="sm">Submit Another Registration</Button>
-          </div>
-        </motion.div>
-      </form>
-    )
-  }
-
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-8">
       <FormHeader />
@@ -397,11 +428,11 @@ export default function RegisterForm() {
         <SectionLabel>Name</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <input type="text" placeholder="First Name *" required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} className="input-modern" />
+            <input id="firstName" type="text" placeholder="First Name *" required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined} />
             <FieldError error={fieldErrors.firstName} />
           </div>
           <div>
-            <input type="text" placeholder="Last Name *" required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} className="input-modern" />
+            <input id="lastName" type="text" placeholder="Last Name *" required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined} />
             <FieldError error={fieldErrors.lastName} />
           </div>
         </div>
@@ -411,8 +442,8 @@ export default function RegisterForm() {
       <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Gender *</label>
-            <select required value={form.gender} onChange={(e) => update('gender', e.target.value)} className="input-modern">
+            <label htmlFor="gender" className="text-xs font-medium text-gray-500 mb-1.5 block">Gender *</label>
+            <select id="gender" required value={form.gender} onChange={(e) => update('gender', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.gender)}>
               <option value="">Please Select</option>
               {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
@@ -436,21 +467,21 @@ export default function RegisterForm() {
         <SectionLabel>Address</SectionLabel>
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <input type="text" placeholder="Street Address Line 1 *" required value={form.streetAddress} onChange={(e) => update('streetAddress', e.target.value)} className="input-modern" />
+            <input id="streetAddress" type="text" placeholder="Street Address Line 1 *" required value={form.streetAddress} onChange={(e) => update('streetAddress', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.streetAddress)} />
             <FieldError error={fieldErrors.streetAddress} />
           </div>
           <input type="text" placeholder="Street Address Line 2" value={form.streetAddress2} onChange={(e) => update('streetAddress2', e.target.value)} className="input-modern" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <input type="text" placeholder="City *" required value={form.city} onChange={(e) => update('city', e.target.value)} className="input-modern" />
+              <input id="city" type="text" placeholder="City *" required value={form.city} onChange={(e) => update('city', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.city)} />
               <FieldError error={fieldErrors.city} />
             </div>
             <div>
-              <input type="text" placeholder="State / Province *" required value={form.state} onChange={(e) => update('state', e.target.value)} className="input-modern" />
+              <input id="state" type="text" placeholder="State / Province *" required value={form.state} onChange={(e) => update('state', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.state)} />
               <FieldError error={fieldErrors.state} />
             </div>
             <div>
-              <input type="text" placeholder="Postal / Zip Code *" required value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} className="input-modern" />
+              <input id="postalCode" type="text" placeholder="Postal / Zip Code *" required value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.postalCode)} />
               <FieldError error={fieldErrors.postalCode} />
             </div>
           </div>
@@ -460,7 +491,7 @@ export default function RegisterForm() {
       {/* Email */}
       <div>
         <SectionLabel>E-mail</SectionLabel>
-        <input type="email" placeholder="ex:myname@example.com*" required value={form.email} onChange={(e) => update('email', e.target.value)} className="input-modern" />
+        <input id="email" type="email" placeholder="ex:myname@example.com*" required value={form.email} onChange={(e) => update('email', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.email)} />
         <FieldError error={fieldErrors.email} />
         {fieldErrors.email === DUPLICATE_EMAIL_MESSAGE && (
           <Link to="/" className="mt-2 inline-block text-sm font-semibold text-primary hover:text-primary-dark">
@@ -473,13 +504,13 @@ export default function RegisterForm() {
       <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Section / Conference you are coming from *</label>
-            <input type="text" required value={form.sectionConference} onChange={(e) => update('sectionConference', e.target.value)} className="input-modern" />
+            <label htmlFor="sectionConference" className="text-xs font-medium text-gray-500 mb-1.5 block">Section / Conference you are coming from *</label>
+            <input id="sectionConference" type="text" required value={form.sectionConference} onChange={(e) => update('sectionConference', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.sectionConference)} />
             <FieldError error={fieldErrors.sectionConference} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Occupation *</label>
-            <select required value={form.occupation} onChange={(e) => update('occupation', e.target.value)} className="input-modern">
+            <label htmlFor="occupation" className="text-xs font-medium text-gray-500 mb-1.5 block">Occupation *</label>
+            <select id="occupation" required value={form.occupation} onChange={(e) => update('occupation', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.occupation)}>
               <option value="">Please Select</option>
               {OCCUPATIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -498,13 +529,13 @@ export default function RegisterForm() {
         <SectionLabel>Travel Dates</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Arrival *</label>
-            <input type="date" required min={EVENT.registrationDates.min} max={EVENT.registrationDates.max} value={form.arrivalDate} onChange={(e) => update('arrivalDate', e.target.value)} className="input-modern" />
+            <label htmlFor="arrivalDate" className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Arrival *</label>
+            <input id="arrivalDate" type="date" required min={EVENT.registrationDates.min} max={EVENT.registrationDates.max} value={form.arrivalDate} onChange={(e) => update('arrivalDate', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.arrivalDate)} />
             <FieldError error={fieldErrors.arrivalDate} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Departure *</label>
-            <input type="date" required min={EVENT.registrationDates.min} max={EVENT.registrationDates.max} value={form.departureDate} onChange={(e) => update('departureDate', e.target.value)} className="input-modern" />
+            <label htmlFor="departureDate" className="text-xs font-medium text-gray-500 mb-1.5 block">Expected date of Departure *</label>
+            <input id="departureDate" type="date" required min={EVENT.registrationDates.min} max={EVENT.registrationDates.max} value={form.departureDate} onChange={(e) => update('departureDate', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.departureDate)} />
             <FieldError error={fieldErrors.departureDate} />
           </div>
         </div>
@@ -535,16 +566,16 @@ export default function RegisterForm() {
       <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">How did you know about IYC? *</label>
-            <select required value={form.howDidYouKnow} onChange={(e) => update('howDidYouKnow', e.target.value)} className="input-modern">
+            <label htmlFor="howDidYouKnow" className="text-xs font-medium text-gray-500 mb-1.5 block">How did you know about IYC? *</label>
+            <select id="howDidYouKnow" required value={form.howDidYouKnow} onChange={(e) => update('howDidYouKnow', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.howDidYouKnow)}>
               <option value="">Please Select</option>
               {HOW_DID_YOU_KNOW.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
             <FieldError error={fieldErrors.howDidYouKnow} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Have you attended IYC meetings in the past? *</label>
-            <select required value={form.pastAttendance} onChange={(e) => update('pastAttendance', e.target.value)} className="input-modern">
+            <label htmlFor="pastAttendance" className="text-xs font-medium text-gray-500 mb-1.5 block">Have you attended IYC meetings in the past? *</label>
+            <select id="pastAttendance" required value={form.pastAttendance} onChange={(e) => update('pastAttendance', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.pastAttendance)}>
               <option value="">Please Select</option>
               {PAST_ATTENDANCE.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -576,7 +607,7 @@ export default function RegisterForm() {
       </div>
 
       {/* Payment */}
-      <div>
+      <div id="payment-section">
         <SectionLabel>Payment</SectionLabel>
         <PaymentSection
           fee={feeInfo?.fee}
@@ -589,29 +620,37 @@ export default function RegisterForm() {
         />
       </div>
 
-      {status === 'success' && successfulPaymentOption === 'pay_now' && (
+      {status === 'success' && successfulPaymentOption && (
         <motion.div
+          role="status"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-green-50 border border-green-100 rounded-2xl p-4 flex gap-3"
+          className="scroll-mt-8 rounded-3xl border border-green-200 bg-green-50 p-6 text-center shadow-sm sm:p-8"
         >
-          <CheckCircle className="text-green-500 shrink-0 mt-0.5" size={18} />
-          <div className="flex-1">
-            <p className="text-green-700 text-sm font-medium mb-3">{message}</p>
-            <Button onClick={() => { resetForm(); setStatus('idle') }} variant="outline" size="sm">
-              Submit Another Registration
-            </Button>
+          <CheckCircle className="mx-auto mb-4 text-green-500" size={42} />
+          <h2 className="font-display text-2xl font-bold text-navy">Registration submitted successfully</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-green-800">{message}</p>
+          {successfulPaymentOption === 'pay_later' && (
+            <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-gray-600">
+              You can complete payment later using the QR code or bank details available through Already Registered.
+            </p>
+          )}
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button to="/" variant="primary" size="sm">Go to Home</Button>
+            <Button onClick={submitAnotherRegistration} variant="outline" size="sm">Submit Another Registration</Button>
           </div>
         </motion.div>
       )}
 
-      <Button type="submit" variant="primary" size="lg" className="w-full gap-2">
-        {status === 'loading' ? (
-          <><Loader2 size={18} className="animate-spin" /> Submitting...</>
-        ) : (
-          <><Send size={18} /> Submit</>
-        )}
-      </Button>
+      {status !== 'success' && (
+        <Button type="submit" variant="primary" size="lg" className="w-full gap-2">
+          {status === 'loading' ? (
+            <><Loader2 size={18} className="animate-spin" /> Submitting...</>
+          ) : (
+            <><Send size={18} /> Submit</>
+          )}
+        </Button>
+      )}
     </form>
   )
 }
