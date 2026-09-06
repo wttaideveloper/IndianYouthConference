@@ -64,13 +64,13 @@ export default function Countdown() {
   }, [])
 
   return (
-    <section className="relative -mt-20 z-10 px-4 pb-4">
+    <section className="relative -mt-20 z-10 px-4 pb-4 bg-white">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="max-w-5xl mx-auto glass-card rounded-3xl p-6 md:p-10 glow-primary"
+        className="max-w-5xl mx-auto bg-white border border-gray-100 rounded-3xl p-6 md:p-10 shadow-xl shadow-black/[0.08]"
       >
         <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
           <div className="text-center lg:text-left">
