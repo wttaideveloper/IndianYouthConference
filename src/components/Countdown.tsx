@@ -64,7 +64,7 @@ export default function Countdown() {
   }, [])
 
   return (
-    <section className="countdown-section relative mt-0 px-4 py-[60px] bg-transparent" style={{ marginTop: 0, transform: 'none', background: 'transparent' }}>
+    <section className="countdown-section relative mt-0 px-4 py-[60px] section-mesh" style={{ marginTop: 0, transform: 'none', background: 'var(--color-surface)' }}>
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
