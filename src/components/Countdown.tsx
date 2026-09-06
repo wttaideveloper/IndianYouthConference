@@ -64,7 +64,7 @@ export default function Countdown() {
   }, [])
 
   return (
-    <section className="relative -mt-20 z-10 px-4 pb-4 bg-white">
+    <section className="countdown-section relative mt-0 px-4 py-[60px] bg-white" style={{ marginTop: 0, transform: 'none' }}>
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}

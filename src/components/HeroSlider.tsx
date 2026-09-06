@@ -25,7 +25,7 @@ export default function HeroSlider() {
   const slide = HERO_SLIDES[current]
 
   return (
-    <section className="relative h-screen min-h-[680px] max-h-[920px] overflow-hidden bg-navy">
+    <section className="hero-section relative h-screen min-h-[680px] max-h-[920px] overflow-hidden bg-navy pb-[80px]">
       {/* Background slides */}
       <AnimatePresence mode="sync">
         <motion.div
