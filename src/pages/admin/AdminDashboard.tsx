@@ -23,11 +23,13 @@ import { motion } from 'framer-motion'
 import {
   fetchRegistrations,
   fetchStats,
+  fetchFilterOptions,
   exportCsv,
   paymentStatusLabel,
   isViewer,
   type Registration,
   type RegistrationFilters,
+  type FilterOptions,
 } from '../../lib/adminApi'
 import RegistrationModal from '../../components/admin/RegistrationModal'
 import AdminEmailModal from '../../components/admin/AdminEmailModal'
@@ -51,6 +53,8 @@ const EMPTY_FILTERS: RegistrationFilters = {
   howDidYouKnow: '',
   pastAttendance: '',
   sectionConference: '',
+  state: '',
+  city: '',
   from: '',
   to: '',
 }
@@ -62,7 +66,7 @@ function getInitials(name: string) {
 function activeFilterCount(filters: RegistrationFilters) {
   const keys: (keyof RegistrationFilters)[] = [
     'status', 'paymentStatus', 'gender', 'occupation', 'programPreference',
-    'howDidYouKnow', 'pastAttendance', 'sectionConference', 'from', 'to', 'search',
+    'howDidYouKnow', 'pastAttendance', 'sectionConference', 'state', 'city', 'from', 'to', 'search',
   ]
   return keys.filter((k) => filters[k]).length
 }
@@ -83,6 +87,7 @@ export default function AdminDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [emailRegistrationId, setEmailRegistrationId] = useState<string | null>(null)
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ states: [], cities: [] })
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -116,6 +121,19 @@ export default function AdminDashboard() {
   const updateFilter = (key: keyof RegistrationFilters, value: string | number) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: key === 'page' ? Number(value) : 1 }))
   }
+
+  const handleStateFilterChange = (value: string) => {
+    setFilters((prev) => ({ ...prev, state: value, city: '', page: 1 }))
+  }
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchFilterOptions(filters.state || undefined)
+        .then((data) => setFilterOptions(data.options))
+        .catch(() => {})
+    }, 250)
+    return () => clearTimeout(t)
+  }, [filters.state])
 
   const clearFilters = () => {
     setSearchInput('')
@@ -309,6 +327,33 @@ export default function AdminDashboard() {
                   onChange={(e) => updateFilter('sectionConference', e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">State</label>
+                <select
+                  value={filters.state || ''}
+                  onChange={(e) => handleStateFilterChange(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All States</option>
+                  {filterOptions.states.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">City</label>
+                <select
+                  value={filters.city || ''}
+                  onChange={(e) => updateFilter('city', e.target.value)}
+                  disabled={!filters.state}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  <option value="">{filters.state ? 'All Cities' : 'Select a state first'}</option>
+                  {filterOptions.cities.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">From Date</label>

@@ -66,6 +66,8 @@ function buildFilter(query) {
   if (query.sectionConference?.trim()) {
     filter.sectionConference = { $regex: query.sectionConference.trim(), $options: 'i' }
   }
+  if (query.state?.trim()) filter.state = { $regex: query.state.trim(), $options: 'i' }
+  if (query.city?.trim()) filter.city = { $regex: query.city.trim(), $options: 'i' }
 
   if (query.search?.trim()) {
     const s = query.search.trim()
@@ -94,6 +96,42 @@ function buildFilter(query) {
 
   return filter
 }
+
+function cleanDistinctValues(values) {
+  const seen = new Set()
+  const cleaned = []
+  for (const raw of values) {
+    const value = String(raw || '').trim()
+    if (!value) continue
+    const key = value.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    cleaned.push(value)
+  }
+  return cleaned.sort((a, b) => a.localeCompare(b))
+}
+
+router.get('/registrations/filter-options', async (req, res) => {
+  if (!isDBConnected()) {
+    return res.status(503).json({ success: false, message: 'Database not connected' })
+  }
+
+  const state = String(req.query.state || '').trim()
+  const stateQuery = state ? { state: { $regex: state, $options: 'i' } } : {}
+
+  const [states, cities] = await Promise.all([
+    Registration.distinct('state'),
+    Registration.distinct('city', stateQuery),
+  ])
+
+  res.json({
+    success: true,
+    options: {
+      states: cleanDistinctValues(states),
+      cities: cleanDistinctValues(cities),
+    },
+  })
+})
 
 function escapeCsv(value) {
   const str = value == null ? '' : String(value)
