@@ -22,6 +22,9 @@ import {
   splitInternationalPhone,
   toInternationalPhone,
 } from '../data/countryCallingCodes'
+import { INDIA_REGIONS, districtsForState } from '../data/indiaRegions'
+
+const OUTSIDE_INDIA = '__outside_india__'
 
 interface FormData {
   firstName: string
@@ -111,6 +114,7 @@ export default function RegisterForm() {
   const [phoneLocalNumber, setPhoneLocalNumber] = useState('')
   const [emergencyCountryCode, setEmergencyCountryCode] = useState(DEFAULT_COUNTRY_CALLING_CODE)
   const [emergencyLocalNumber, setEmergencyLocalNumber] = useState('')
+  const [outsideIndia, setOutsideIndia] = useState(false)
 
   const feeInfo = useMemo(
     () =>
@@ -133,6 +137,18 @@ export default function RegisterForm() {
     setForm((prev) => ({ ...prev, [field]: value }))
     setErrors([])
     clearFieldError(field)
+  }
+
+  const handleStateChange = (value: string) => {
+    if (value === OUTSIDE_INDIA) {
+      setOutsideIndia(true)
+      update('state', '')
+      update('city', '')
+    } else {
+      setOutsideIndia(false)
+      update('state', value)
+      update('city', '')
+    }
   }
 
   const resetPhoneFields = () => {
@@ -473,18 +489,67 @@ export default function RegisterForm() {
           <input type="text" placeholder="Street Address Line 2" value={form.streetAddress2} onChange={(e) => update('streetAddress2', e.target.value)} className="input-modern" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <input id="city" type="text" placeholder="City *" required value={form.city} onChange={(e) => update('city', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.city)} />
+              <label htmlFor="state" className="text-xs font-medium text-gray-500 mb-1.5 block">State *</label>
+              <select
+                id="state"
+                required
+                value={outsideIndia ? OUTSIDE_INDIA : form.state}
+                onChange={(e) => handleStateChange(e.target.value)}
+                className="input-modern"
+                aria-invalid={Boolean(fieldErrors.state)}
+              >
+                <option value="">Please Select</option>
+                {INDIA_REGIONS.map((r) => (
+                  <option key={r.state} value={r.state}>{r.state}</option>
+                ))}
+                <option value={OUTSIDE_INDIA}>Other / Outside India</option>
+              </select>
+              {!outsideIndia && <FieldError error={fieldErrors.state} />}
+            </div>
+            <div>
+              <label htmlFor="city" className="text-xs font-medium text-gray-500 mb-1.5 block">City / Town *</label>
+              {!outsideIndia ? (
+                <select
+                  id="city"
+                  required
+                  value={form.city}
+                  onChange={(e) => update('city', e.target.value)}
+                  disabled={!form.state}
+                  className="input-modern"
+                  aria-invalid={Boolean(fieldErrors.city)}
+                >
+                  <option value="">{form.state ? 'Please Select' : 'Select a state first'}</option>
+                  {districtsForState(form.state).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="city"
+                  type="text"
+                  placeholder="City / Town *"
+                  required
+                  value={form.city}
+                  onChange={(e) => update('city', e.target.value)}
+                  className="input-modern"
+                  aria-invalid={Boolean(fieldErrors.city)}
+                />
+              )}
               <FieldError error={fieldErrors.city} />
             </div>
             <div>
-              <input id="state" type="text" placeholder="State / Province *" required value={form.state} onChange={(e) => update('state', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.state)} />
-              <FieldError error={fieldErrors.state} />
-            </div>
-            <div>
+              <label htmlFor="postalCode" className="text-xs font-medium text-gray-500 mb-1.5 block">Postal / Zip Code *</label>
               <input id="postalCode" type="text" placeholder="Postal / Zip Code *" required value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.postalCode)} />
               <FieldError error={fieldErrors.postalCode} />
             </div>
           </div>
+          {outsideIndia && (
+            <div className="mt-4">
+              <label htmlFor="stateOutside" className="text-xs font-medium text-gray-500 mb-1.5 block">State / Province (Outside India) *</label>
+              <input id="stateOutside" type="text" placeholder="State / Province (Outside India) *" required value={form.state} onChange={(e) => update('state', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.state)} />
+              <FieldError error={fieldErrors.state} />
+            </div>
+          )}
         </div>
       </div>
 

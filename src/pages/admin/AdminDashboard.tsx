@@ -23,17 +23,19 @@ import { motion } from 'framer-motion'
 import {
   fetchRegistrations,
   fetchStats,
-  fetchFilterOptions,
   exportCsv,
   paymentStatusLabel,
   isViewer,
   type Registration,
   type RegistrationFilters,
-  type FilterOptions,
 } from '../../lib/adminApi'
+import { INDIA_REGIONS, districtsForState } from '../../data/indiaRegions'
 import RegistrationModal from '../../components/admin/RegistrationModal'
 import AdminEmailModal from '../../components/admin/AdminEmailModal'
 import { deleteRegistration } from '../../lib/adminApi'
+
+const OUTSIDE_INDIA = '__outside_india__'
+const INDIA_STATE_NAMES = INDIA_REGIONS.map((r) => r.state)
 
 const STATUS_CONFIG = {
   pending: { badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-400', label: 'Pending' },
@@ -87,7 +89,6 @@ export default function AdminDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [emailRegistrationId, setEmailRegistrationId] = useState<string | null>(null)
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ states: [], cities: [] })
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -125,15 +126,6 @@ export default function AdminDashboard() {
   const handleStateFilterChange = (value: string) => {
     setFilters((prev) => ({ ...prev, state: value, city: '', page: 1 }))
   }
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      fetchFilterOptions(filters.state || undefined)
-        .then((data) => setFilterOptions(data.options))
-        .catch(() => {})
-    }, 250)
-    return () => clearTimeout(t)
-  }, [filters.state])
 
   const clearFilters = () => {
     setSearchInput('')
@@ -336,9 +328,10 @@ export default function AdminDashboard() {
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">All States</option>
-                  {filterOptions.states.map((s) => (
+                  {INDIA_STATE_NAMES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
+                  <option value={OUTSIDE_INDIA}>Other / Outside India</option>
                 </select>
               </div>
               <div>
@@ -346,13 +339,21 @@ export default function AdminDashboard() {
                 <select
                   value={filters.city || ''}
                   onChange={(e) => updateFilter('city', e.target.value)}
-                  disabled={!filters.state}
+                  disabled={!filters.state || filters.state === OUTSIDE_INDIA}
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  <option value="">{filters.state ? 'All Cities' : 'Select a state first'}</option>
-                  {filterOptions.cities.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  <option value="">
+                    {filters.state === OUTSIDE_INDIA
+                      ? 'Not applicable'
+                      : filters.state
+                        ? 'All Cities'
+                        : 'Select a state first'}
+                  </option>
+                  {filters.state && filters.state !== OUTSIDE_INDIA
+                    ? districtsForState(filters.state).map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))
+                    : null}
                 </select>
               </div>
               <div>

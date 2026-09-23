@@ -90,11 +90,6 @@ export interface RegistrationFilters {
   to?: string
 }
 
-export interface FilterOptions {
-  states: string[]
-  cities: string[]
-}
-
 export type AdminEmailAudience = 'all' | 'verified' | 'payment_under_review' | 'pay_later_unpaid' | 'individual'
 
 export interface AdminEmailAudienceRequest {
@@ -212,16 +207,6 @@ export function sendAdminEmailCampaign({
 export async function fetchRegistrations(filters: RegistrationFilters = {}) {
   const qs = toQuery(filters)
   return adminFetch(`/api/admin/registrations?${qs}`)
-}
-
-export async function fetchFilterOptions(state?: string) {
-  const params = new URLSearchParams()
-  if (state) params.set('state', state)
-  const qs = params.toString()
-  return adminFetch(`/api/admin/registrations/filter-options${qs ? `?${qs}` : ''}`) as Promise<{
-    success: true
-    options: FilterOptions
-  }>
 }
 
 export async function fetchRegistration(id: string) {

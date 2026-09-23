@@ -7,6 +7,7 @@ import Registration from '../models/Registration.js'
 import AdminEmailCampaign from '../models/AdminEmailCampaign.js'
 import { requireAdmin, requireRole } from '../middleware/auth.js'
 import { isDBConnected } from '../db.js'
+import { INDIA_STATE_NAMES } from '../lib/indiaStateNames.js'
 import {
   validateRegistrationFields,
   buildRegistrationUpdate,
@@ -23,9 +24,25 @@ const router = Router()
 
 router.use(requireAdmin)
 
+const OUTSIDE_INDIA = '__outside_india__'
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function buildFilter(query) {
   const filter = {}
   const conditions = []
+
+  if (query.state === OUTSIDE_INDIA) {
+    conditions.push({
+      state: {
+        $not: {
+          $in: INDIA_STATE_NAMES.map((name) => new RegExp(escapeRegex(name), 'i')),
+        },
+      },
+    })
+  }
 
   if (query.status) conditions.push({ status: query.status })
   if (query.paymentStatus === 'paid') {
@@ -66,7 +83,7 @@ function buildFilter(query) {
   if (query.sectionConference?.trim()) {
     filter.sectionConference = { $regex: query.sectionConference.trim(), $options: 'i' }
   }
-  if (query.state?.trim()) filter.state = { $regex: query.state.trim(), $options: 'i' }
+  if (query.state?.trim() && query.state !== OUTSIDE_INDIA) filter.state = { $regex: query.state.trim(), $options: 'i' }
   if (query.city?.trim()) filter.city = { $regex: query.city.trim(), $options: 'i' }
 
   if (query.search?.trim()) {
@@ -96,42 +113,6 @@ function buildFilter(query) {
 
   return filter
 }
-
-function cleanDistinctValues(values) {
-  const seen = new Set()
-  const cleaned = []
-  for (const raw of values) {
-    const value = String(raw || '').trim()
-    if (!value) continue
-    const key = value.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    cleaned.push(value)
-  }
-  return cleaned.sort((a, b) => a.localeCompare(b))
-}
-
-router.get('/registrations/filter-options', async (req, res) => {
-  if (!isDBConnected()) {
-    return res.status(503).json({ success: false, message: 'Database not connected' })
-  }
-
-  const state = String(req.query.state || '').trim()
-  const stateQuery = state ? { state: { $regex: state, $options: 'i' } } : {}
-
-  const [states, cities] = await Promise.all([
-    Registration.distinct('state'),
-    Registration.distinct('city', stateQuery),
-  ])
-
-  res.json({
-    success: true,
-    options: {
-      states: cleanDistinctValues(states),
-      cities: cleanDistinctValues(cities),
-    },
-  })
-})
 
 function escapeCsv(value) {
   const str = value == null ? '' : String(value)
@@ -605,6 +586,13 @@ router.get('/registrations/export', async (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8')
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
   res.send('\uFEFF' + lines.join('\n'))
+})
+
+router.param('id', (req, res, next, id) => {
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+    return res.status(400).json({ success: false, message: 'Invalid registration id' })
+  }
+  next()
 })
 
 router.get('/registrations/:id', async (req, res) => {
