@@ -7,6 +7,7 @@ import Registration from '../models/Registration.js'
 import AdminEmailCampaign from '../models/AdminEmailCampaign.js'
 import { requireAdmin, requireRole } from '../middleware/auth.js'
 import { isDBConnected } from '../db.js'
+import { normalizeGroupAttendees } from '../lib/groupRegistrationHelpers.js'
 import { INDIA_STATE_NAMES } from '../lib/indiaStateNames.js'
 import {
   validateRegistrationFields,
@@ -143,6 +144,7 @@ const CSV_HEADERS = [
   'Occupation',
   'Fee',
   'Fee Label',
+  'Group Attendees',
   'Arrival Date',
   'Departure Date',
   'Program Preference',
@@ -570,6 +572,7 @@ router.get('/registrations/export', async (req, res) => {
         r.occupation,
         r.fee,
         r.feeLabel,
+        [r.fullName, ...(r.additionalAttendees || []).map((person) => person.fullName)].join('; '),
         r.arrivalDate,
         r.departureDate,
         r.programPreference,
@@ -689,18 +692,27 @@ router.patch('/registrations/:id', requireRole('admin'), async (req, res) => {
   }
 
   const errors = validateRegistrationFields(merged)
+  let additionalAttendees = existing.additionalAttendees || []
+  if (Object.prototype.hasOwnProperty.call(req.body, 'additionalAttendees')) {
+    const normalized = normalizeGroupAttendees(req.body.additionalAttendees)
+    errors.push(...normalized.errors)
+    if (normalized.errors.length === 0) additionalAttendees = normalized.attendees
+  }
   if (errors.length > 0) {
     return res.status(400).json({ success: false, errors })
   }
 
   const updates = buildRegistrationUpdate(req.body)
-  if (updates.occupation || updates.programPreference) {
-    const { fee, label } = calculateFee(
+  if (Object.prototype.hasOwnProperty.call(req.body, 'additionalAttendees')) {
+    updates.additionalAttendees = additionalAttendees
+  }
+  if (updates.occupation || updates.programPreference || Object.prototype.hasOwnProperty.call(req.body, 'additionalAttendees')) {
+    const primaryFee = calculateFee(
       updates.occupation || existing.occupation,
       updates.programPreference || existing.programPreference,
     )
-    updates.fee = fee
-    updates.feeLabel = label
+    updates.fee = primaryFee.fee + additionalAttendees.reduce((sum, person) => sum + Number(person.fee || 0), 0)
+    updates.feeLabel = additionalAttendees.length ? `Group of ${additionalAttendees.length + 1}` : primaryFee.label
   }
 
   const previousStatus = existing.status

@@ -428,6 +428,7 @@ export default function AdminDashboard() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-navy text-sm truncate">{item.fullName}</p>
+                            {item.additionalAttendees?.length ? <p className="text-[11px] font-semibold text-primary">Group of {item.additionalAttendees.length + 1} · organizer</p> : null}
                             <p className="text-xs text-gray-400 truncate">{item.email}</p>
                           </div>
                         </div>

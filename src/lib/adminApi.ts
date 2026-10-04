@@ -146,6 +146,11 @@ export interface Registration {
   emergencyContactNumber: string
   fee: number
   feeLabel: string
+  additionalAttendees?: Array<{
+    firstName: string; lastName: string; fullName: string; gender: string; phone: string
+    occupation: string; programPreference: string; fee: number; feeLabel: string
+    emergencyContactName: string; emergencyContactNumber: string
+  }>
   paymentOption?: 'pay_now' | 'pay_later'
   status: 'pending' | 'verified' | 'rejected'
   adminNotes?: string

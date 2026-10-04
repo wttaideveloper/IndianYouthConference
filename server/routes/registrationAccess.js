@@ -153,7 +153,7 @@ function handlePaymentProofUpload(req, res, next) {
  * paymentScreenshot is selected only to derive paymentState and is never returned.
  */
 const PUBLIC_FIELDS =
-  'email fullName fee feeLabel paymentOption status createdAt paymentScreenshot'
+  'email fullName fee feeLabel paymentOption status createdAt paymentScreenshot additionalAttendees'
 
 function toAttendeeView(reg) {
   const state = paymentState(reg)
@@ -161,6 +161,7 @@ function toAttendeeView(reg) {
     registrationId: String(reg._id),
     email: reg.email,
     fullName: reg.fullName,
+    attendees: [reg.fullName, ...(reg.additionalAttendees || []).map((person) => person.fullName)],
     fee: reg.fee,
     feeLabel: reg.feeLabel,
     paymentOption: reg.paymentOption || 'pay_now',

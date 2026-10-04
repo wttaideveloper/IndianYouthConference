@@ -1,5 +1,19 @@
 import mongoose from 'mongoose'
 
+const groupAttendeeSchema = new mongoose.Schema({
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  fullName: { type: String, required: true },
+  gender: { type: String, enum: ['Male', 'Female'], required: true },
+  phone: { type: String, required: true },
+  occupation: { type: String, enum: ['Student', 'Pastor', 'Missionary Volunteer', 'Working', 'Dependent'], required: true },
+  programPreference: { type: String, enum: ['All the Days', 'Only Over the Weekend'], default: 'All the Days' },
+  fee: { type: Number, required: true },
+  feeLabel: { type: String, required: true },
+  emergencyContactName: { type: String, required: true },
+  emergencyContactNumber: { type: String, required: true },
+}, { _id: false })
+
 const registrationSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
@@ -37,6 +51,7 @@ const registrationSchema = new mongoose.Schema(
     paymentOption: { type: String, enum: ['pay_now', 'pay_later'], default: 'pay_now' },
     fee: { type: Number, required: true },
     feeLabel: { type: String, required: true },
+    additionalAttendees: { type: [groupAttendeeSchema], default: [] },
     paymentScreenshot: {
       filename: String,
       originalname: String,

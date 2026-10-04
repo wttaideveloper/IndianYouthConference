@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
-import { Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Send, CheckCircle, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Button from './Button'
 import PaymentSection from './PaymentSection'
 import PhoneNumberField from './PhoneNumberField'
+import InternationalPhoneInput from './InternationalPhoneInput'
 import { EVENT } from '../data/content'
 import {
   OCCUPATIONS,
@@ -68,6 +69,20 @@ const INITIAL: FormData = {
 
 const DUPLICATE_EMAIL_MESSAGE = 'A registration with this email already exists. Please use Already Registered to view or continue your registration.'
 
+type AdditionalAttendee = {
+  firstName: string; lastName: string; gender: string; phone: string; occupation: string
+  programPreference: string; emergencyContactName: string; emergencyContactNumber: string
+}
+
+function groupPhoneError(value: string, label: string) {
+  const parsed = splitInternationalPhone(value.trim())
+  if (!value.trim()) return `${label} is required`
+  if (!parsed.localNumber) return `${label}: include a country calling code`
+  return isValidNationalPhoneNumber(parsed.countryCode, parsed.localNumber)
+    ? ''
+    : nationalPhoneNumberLengthError(label, parsed.countryCode)
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="font-display font-bold text-navy mb-4 flex items-center gap-2">
@@ -115,6 +130,7 @@ export default function RegisterForm() {
   const [emergencyCountryCode, setEmergencyCountryCode] = useState(DEFAULT_COUNTRY_CALLING_CODE)
   const [emergencyLocalNumber, setEmergencyLocalNumber] = useState('')
   const [outsideIndia, setOutsideIndia] = useState(false)
+  const [additionalAttendees, setAdditionalAttendees] = useState<AdditionalAttendee[]>([])
 
   const feeInfo = useMemo(
     () =>
@@ -123,6 +139,10 @@ export default function RegisterForm() {
         : null,
     [form.occupation, form.programPreference],
   )
+  const groupTotal = (feeInfo?.fee || 0) + additionalAttendees.reduce((sum, attendee) => {
+    if (!attendee.occupation) return sum
+    return sum + calculateFee(attendee.occupation, attendee.programPreference).fee
+  }, 0)
 
   const clearFieldError = (field: string) => {
     setFieldErrors((prev) => {
@@ -186,11 +206,15 @@ export default function RegisterForm() {
 
   const handleCountryCodeChange = (field: 'phone' | 'emergencyContactNumber', value: string) => {
     const localNumber = field === 'phone' ? phoneLocalNumber : emergencyLocalNumber
+    const maxLength = getCountryCallingCodeOption(value)?.maxLength || 15
+    const limitedNumber = localNumber.slice(0, maxLength)
     const label = field === 'phone' ? 'Phone number' : 'Emergency contact number'
     if (field === 'phone') setPhoneCountryCode(value)
     else setEmergencyCountryCode(value)
+    if (field === 'phone') setPhoneLocalNumber(limitedNumber)
+    else setEmergencyLocalNumber(limitedNumber)
     setErrors([])
-    syncPhoneFieldError(field, label, value, localNumber, Boolean(localNumber))
+    syncPhoneFieldError(field, label, value, limitedNumber, Boolean(limitedNumber))
   }
 
   const handleLocalNumberChange = (field: 'phone' | 'emergencyContactNumber', value: string) => {
@@ -243,6 +267,7 @@ export default function RegisterForm() {
     setFieldErrors({})
     setMessage('')
     setSuccessfulPaymentOption(null)
+    setAdditionalAttendees([])
   }
 
   const validateForm = (): Record<string, string> => {
@@ -281,6 +306,18 @@ export default function RegisterForm() {
       emergencyLocalNumber,
     )
     if (emergencyPhoneError) errs.emergencyContactNumber = emergencyPhoneError
+    additionalAttendees.forEach((attendee, index) => {
+      const label = `Attendee ${index + 2}`
+      if (!attendee.firstName.trim()) errs[`attendee${index}First`] = `${label}: first name is required`
+      if (!attendee.lastName.trim()) errs[`attendee${index}Last`] = `${label}: last name is required`
+      if (!GENDERS.includes(attendee.gender as typeof GENDERS[number])) errs[`attendee${index}Gender`] = `${label}: select a gender`
+      const attendeePhoneError = groupPhoneError(attendee.phone, `${label} phone number`)
+      if (attendeePhoneError) errs[`attendee${index}Phone`] = attendeePhoneError
+      if (!attendee.occupation) errs[`attendee${index}Occupation`] = `${label}: select an occupation`
+      if (!attendee.emergencyContactName.trim()) errs[`attendee${index}Emergency`] = `${label}: emergency contact name is required`
+      const attendeeEmergencyPhoneError = groupPhoneError(attendee.emergencyContactNumber, `${label} emergency number`)
+      if (attendeeEmergencyPhoneError) errs[`attendee${index}EmergencyPhone`] = attendeeEmergencyPhoneError
+    })
     return errs
   }
 
@@ -349,6 +386,7 @@ export default function RegisterForm() {
     setErrors([])
     setMessage('')
     setScreenshotError('')
+    setFieldErrors({})
 
     const validationErrors = validateForm()
     const screenshotMissing = paymentOption === 'pay_now' && !screenshot
@@ -357,7 +395,7 @@ export default function RegisterForm() {
     )
 
     if (Object.keys(validationErrors).length > 0 || screenshotMissing) {
-      if (Object.keys(validationErrors).length > 0) setFieldErrors(validationErrors)
+      setFieldErrors(validationErrors)
       setStatus('error')
       focusFirstError(validationErrors, screenshotMissing)
       return
@@ -377,6 +415,7 @@ export default function RegisterForm() {
       body.append('feeLabel', feeInfo.label)
     }
     body.append('paymentOption', paymentOption)
+    body.append('additionalAttendees', JSON.stringify(additionalAttendees))
     if (paymentOption === 'pay_now' && screenshot) body.append('paymentScreenshot', screenshot)
 
     try {
@@ -406,6 +445,7 @@ export default function RegisterForm() {
       setForm(INITIAL)
       resetPhoneFields()
       setPaymentOption('pay_now')
+      setAdditionalAttendees([])
       setSuccessfulPaymentOption(paymentOption)
       setStatus('success')
       setMessage(data.message)
@@ -671,11 +711,55 @@ export default function RegisterForm() {
         </div>
       </div>
 
+      {/* Group attendees share the organizer's address, travel dates, section and referral details. */}
+      <div className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <SectionLabel>Group Registration</SectionLabel>
+            <p className="-mt-2 text-xs text-gray-500">You are attendee 1 and the group organizer. Additional attendees share your address, section, travel dates and referral answers.</p>
+          </div>
+          <button type="button" disabled={additionalAttendees.length >= 24} onClick={() => setAdditionalAttendees((items) => [...items, { firstName: '', lastName: '', gender: '', phone: '', occupation: '', programPreference: 'All the Days', emergencyContactName: '', emergencyContactNumber: '' }])} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
+            <Plus size={16} /> {additionalAttendees.length >= 24 ? 'Maximum group size reached' : 'Add attendee'}
+          </button>
+        </div>
+        {additionalAttendees.map((attendee, index) => {
+          const setAttendee = (key: keyof AdditionalAttendee, value: string) => {
+            setAdditionalAttendees((items) => items.map((item, i) => i === index ? { ...item, [key]: value } : item))
+            const suffix: Partial<Record<keyof AdditionalAttendee, string>> = {
+              firstName: 'First', lastName: 'Last', gender: 'Gender', phone: 'Phone',
+              occupation: 'Occupation', emergencyContactName: 'Emergency', emergencyContactNumber: 'EmergencyPhone',
+            }
+            const errorKey = suffix[key] ? `attendee${index}${suffix[key]}` : ''
+            if (errorKey) setFieldErrors((previous) => {
+              if (!(errorKey in previous)) return previous
+              const next = { ...previous }
+              delete next[errorKey]
+              return next
+            })
+            setErrors([])
+          }
+          return <div key={index} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between"><p className="font-semibold text-navy">Attendee {index + 2}</p><button type="button" onClick={() => { setAdditionalAttendees((items) => items.filter((_, i) => i !== index)); setFieldErrors((previous) => Object.fromEntries(Object.entries(previous).filter(([field]) => !field.startsWith('attendee')))) }} className="inline-flex items-center gap-1 text-xs text-red-600"><Trash2 size={14} /> Remove</button></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><input aria-label={`Attendee ${index + 2} first name`} className="input-modern" placeholder="First name *" value={attendee.firstName} onChange={(e) => setAttendee('firstName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}First`]} /></div>
+              <div><input aria-label={`Attendee ${index + 2} last name`} className="input-modern" placeholder="Last name *" value={attendee.lastName} onChange={(e) => setAttendee('lastName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}Last`]} /></div>
+              <div><select aria-label={`Attendee ${index + 2} gender`} className="input-modern" value={attendee.gender} onChange={(e) => setAttendee('gender', e.target.value)}><option value="">Gender *</option>{GENDERS.map((value) => <option key={value}>{value}</option>)}</select><FieldError error={fieldErrors[`attendee${index}Gender`]} /></div>
+              <div><InternationalPhoneInput id={`attendee-${index}-phone`} label={`Attendee ${index + 2} phone`} required value={attendee.phone} onChange={(value) => setAttendee('phone', value)} error={fieldErrors[`attendee${index}Phone`]} /></div>
+              <div><select aria-label={`Attendee ${index + 2} occupation`} className="input-modern" value={attendee.occupation} onChange={(e) => setAttendee('occupation', e.target.value)}><option value="">Occupation *</option>{OCCUPATIONS.map((value) => <option key={value}>{value}</option>)}</select><FieldError error={fieldErrors[`attendee${index}Occupation`]} /></div>
+              <div><select aria-label={`Attendee ${index + 2} program`} className="input-modern" value={attendee.programPreference} onChange={(e) => setAttendee('programPreference', e.target.value)}>{PROGRAM_PREFERENCES.map((value) => <option key={value}>{value}</option>)}</select></div>
+              <div><input aria-label={`Attendee ${index + 2} emergency contact name`} className="input-modern" placeholder="Emergency contact name *" value={attendee.emergencyContactName} onChange={(e) => setAttendee('emergencyContactName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}Emergency`]} /></div>
+              <div><InternationalPhoneInput id={`attendee-${index}-emergency-phone`} label={`Attendee ${index + 2} emergency contact number`} required value={attendee.emergencyContactNumber} onChange={(value) => setAttendee('emergencyContactNumber', value)} error={fieldErrors[`attendee${index}EmergencyPhone`]} /></div>
+            </div>
+          </div>
+        })}
+        {feeInfo && <div className="border-t border-primary/10 pt-3 text-sm"><div className="flex justify-between text-gray-600"><span>Organizer · {feeInfo.label}</span><span>₹{feeInfo.fee}</span></div>{additionalAttendees.map((attendee, index) => attendee.occupation ? <div key={index} className="mt-1 flex justify-between text-gray-600"><span>{attendee.firstName || `Attendee ${index + 2}`} · {calculateFee(attendee.occupation, attendee.programPreference).label}</span><span>₹{calculateFee(attendee.occupation, attendee.programPreference).fee}</span></div> : null)}<div className="mt-2 flex justify-between border-t border-primary/10 pt-2 font-bold text-navy"><span>Total for {additionalAttendees.length + 1} attendee{additionalAttendees.length ? 's' : ''}</span><span>₹{groupTotal}</span></div></div>}
+      </div>
+
       {/* Payment */}
       <div id="payment-section">
         <SectionLabel>Payment</SectionLabel>
         <PaymentSection
-          fee={feeInfo?.fee}
+          fee={feeInfo ? groupTotal : undefined}
           screenshot={screenshot}
           preview={screenshotPreview}
           paymentOption={paymentOption}
