@@ -31,7 +31,9 @@ interface FormData {
   firstName: string
   lastName: string
   gender: string
+  phone: string
   email: string
+  age: string
   streetAddress: string
   streetAddress2: string
   city: string
@@ -45,13 +47,16 @@ interface FormData {
   howDidYouKnow: string
   pastAttendance: string
   emergencyContactName: string
+  emergencyContactNumber: string
 }
 
 const INITIAL: FormData = {
   firstName: '',
   lastName: '',
   gender: '',
+  phone: '',
   email: '',
+  age: '',
   streetAddress: '',
   streetAddress2: '',
   city: '',
@@ -61,17 +66,18 @@ const INITIAL: FormData = {
   occupation: '',
   arrivalDate: '',
   departureDate: '',
-  programPreference: '',
+  programPreference: 'All the Days',
   howDidYouKnow: '',
   pastAttendance: '',
   emergencyContactName: '',
+  emergencyContactNumber: '',
 }
 
 const DUPLICATE_EMAIL_MESSAGE = 'A registration with this email already exists. Please use Already Registered to view or continue your registration.'
 
 type AdditionalAttendee = {
   firstName: string; lastName: string; gender: string; phone: string; occupation: string
-  programPreference: string; emergencyContactName: string; emergencyContactNumber: string
+  programPreference: string; emergencyContactName: string; emergencyContactNumber: string; age: string
 }
 
 function groupPhoneError(value: string, label: string) {
@@ -317,6 +323,11 @@ export default function RegisterForm() {
       if (!attendee.emergencyContactName.trim()) errs[`attendee${index}Emergency`] = `${label}: emergency contact name is required`
       const attendeeEmergencyPhoneError = groupPhoneError(attendee.emergencyContactNumber, `${label} emergency number`)
       if (attendeeEmergencyPhoneError) errs[`attendee${index}EmergencyPhone`] = attendeeEmergencyPhoneError
+      const ageRaw = attendee.age.trim()
+      const age = Number(ageRaw)
+      if (!ageRaw || !/^\d{1,3}$/.test(ageRaw) || !Number.isFinite(age) || age < 1 || age > 120) {
+        errs[`attendee${index}Age`] = `${label}: age must be 1–120 (max 3 digits)`
+      }
     })
     return errs
   }
@@ -497,14 +508,11 @@ export default function RegisterForm() {
       {/* Gender & Phone */}
       <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="gender" className="text-xs font-medium text-gray-500 mb-1.5 block">Gender *</label>
-            <select id="gender" required value={form.gender} onChange={(e) => update('gender', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.gender)}>
-              <option value="">Please Select</option>
-              {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <FieldError error={fieldErrors.gender} />
-          </div>
+            <div>
+              <label htmlFor="age" className="text-xs font-medium text-gray-500 mb-1.5 block">Age *</label>
+              <input id="age" type="number" inputMode="numeric" pattern="\d{1,3}" min={1} max={120} placeholder="Age (1–120)" required value={form.age} onChange={(e) => update('age', e.target.value.replace(/\D/g, '').slice(0,3))} className="input-modern" aria-invalid={Boolean(fieldErrors.age)} />
+              <FieldError error={fieldErrors.age} />
+            </div>
           <PhoneNumberField
             id="phone"
             label="Phone Number"
@@ -617,7 +625,7 @@ export default function RegisterForm() {
             <label htmlFor="occupation" className="text-xs font-medium text-gray-500 mb-1.5 block">Occupation *</label>
             <select id="occupation" required value={form.occupation} onChange={(e) => update('occupation', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.occupation)}>
               <option value="">Please Select</option>
-              {OCCUPATIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+              {OCCUPATIONS.map((o) => <option key={o}>{o}</option>)}
             </select>
             <FieldError error={fieldErrors.occupation} />
           </div>
@@ -718,7 +726,7 @@ export default function RegisterForm() {
             <SectionLabel>Group Registration</SectionLabel>
             <p className="-mt-2 text-xs text-gray-500">You are attendee 1 and the group organizer. Additional attendees share your address, section, travel dates and referral answers.</p>
           </div>
-          <button type="button" disabled={additionalAttendees.length >= 24} onClick={() => setAdditionalAttendees((items) => [...items, { firstName: '', lastName: '', gender: '', phone: '', occupation: '', programPreference: 'All the Days', emergencyContactName: '', emergencyContactNumber: '' }])} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={additionalAttendees.length >= 24} onClick={() => setAdditionalAttendees((items) => [...items, { firstName: '', lastName: '', gender: '', phone: '', occupation: '', programPreference: 'All the Days', emergencyContactName: '', emergencyContactNumber: '', age: '' }])} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
             <Plus size={16} /> {additionalAttendees.length >= 24 ? 'Maximum group size reached' : 'Add attendee'}
           </button>
         </div>
@@ -727,7 +735,7 @@ export default function RegisterForm() {
             setAdditionalAttendees((items) => items.map((item, i) => i === index ? { ...item, [key]: value } : item))
             const suffix: Partial<Record<keyof AdditionalAttendee, string>> = {
               firstName: 'First', lastName: 'Last', gender: 'Gender', phone: 'Phone',
-              occupation: 'Occupation', emergencyContactName: 'Emergency', emergencyContactNumber: 'EmergencyPhone',
+              occupation: 'Occupation', emergencyContactName: 'Emergency', emergencyContactNumber: 'EmergencyPhone', age: 'Age',
             }
             const errorKey = suffix[key] ? `attendee${index}${suffix[key]}` : ''
             if (errorKey) setFieldErrors((previous) => {
@@ -747,6 +755,7 @@ export default function RegisterForm() {
               <div><InternationalPhoneInput id={`attendee-${index}-phone`} label={`Attendee ${index + 2} phone`} required value={attendee.phone} onChange={(value) => setAttendee('phone', value)} error={fieldErrors[`attendee${index}Phone`]} /></div>
               <div><select aria-label={`Attendee ${index + 2} occupation`} className="input-modern" value={attendee.occupation} onChange={(e) => setAttendee('occupation', e.target.value)}><option value="">Occupation *</option>{OCCUPATIONS.map((value) => <option key={value}>{value}</option>)}</select><FieldError error={fieldErrors[`attendee${index}Occupation`]} /></div>
               <div><select aria-label={`Attendee ${index + 2} program`} className="input-modern" value={attendee.programPreference} onChange={(e) => setAttendee('programPreference', e.target.value)}>{PROGRAM_PREFERENCES.map((value) => <option key={value}>{value}</option>)}</select></div>
+              <div><input aria-label={`Attendee ${index + 2} age`} type="number" inputMode="numeric" pattern="\d{1,3}" min={1} max={120} className="input-modern" placeholder="Age * (1–120)" value={attendee.age} onChange={(e) => setAttendee('age', e.target.value.replace(/\D/g, '').slice(0,3))} /><FieldError error={fieldErrors[`attendee${index}Age`]} /></div>
               <div><input aria-label={`Attendee ${index + 2} emergency contact name`} className="input-modern" placeholder="Emergency contact name *" value={attendee.emergencyContactName} onChange={(e) => setAttendee('emergencyContactName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}Emergency`]} /></div>
               <div><InternationalPhoneInput id={`attendee-${index}-emergency-phone`} label={`Attendee ${index + 2} emergency contact number`} required value={attendee.emergencyContactNumber} onChange={(value) => setAttendee('emergencyContactNumber', value)} error={fieldErrors[`attendee${index}EmergencyPhone`]} /></div>
             </div>

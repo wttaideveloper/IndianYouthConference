@@ -31,6 +31,7 @@ export function normalizeGroupAttendees(value) {
     const programPreference = String(person.programPreference || 'All the Days')
     const emergencyContactName = String(person.emergencyContactName || '').trim()
     const emergencyContactNumber = String(person.emergencyContactNumber || '').trim()
+    const ageRaw = String(person.age || '').trim()
 
     if (!firstName) errors.push(`${label}: first name is required`)
     if (!lastName) errors.push(`${label}: last name is required`)
@@ -40,6 +41,10 @@ export function normalizeGroupAttendees(value) {
     if (!PROGRAM_PREFERENCES.includes(programPreference)) errors.push(`${label}: select a valid program`)
     if (!emergencyContactName) errors.push(`${label}: emergency contact name is required`)
     if (!isValidRegistrationPhoneNumber(emergencyContactNumber)) errors.push(`${label}: a valid emergency contact number is required`)
+    const age = Number(ageRaw)
+    if (!ageRaw || !Number.isFinite(age) || age < 1 || age > 120 || !/^\d{1,3}$/.test(ageRaw)) {
+      errors.push(`${label}: age must be a number between 1 and 120 (max 3 digits)`)
+    }
 
     const feeInfo = calculateFee(occupation, programPreference)
     return {
@@ -54,6 +59,7 @@ export function normalizeGroupAttendees(value) {
       feeLabel: feeInfo.label,
       emergencyContactName,
       emergencyContactNumber,
+      age: Math.trunc(age),
     }
   })
 

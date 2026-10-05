@@ -12,6 +12,7 @@ const groupAttendeeSchema = new mongoose.Schema({
   feeLabel: { type: String, required: true },
   emergencyContactName: { type: String, required: true },
   emergencyContactNumber: { type: String, required: true },
+  age: { type: Number, required: true, min: 0, max: 120 },
 }, { _id: false })
 
 const registrationSchema = new mongoose.Schema(
@@ -22,6 +23,7 @@ const registrationSchema = new mongoose.Schema(
     gender: { type: String, enum: ['Male', 'Female'], required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true, lowercase: true },
+    age: { type: Number, required: true, min: 0, max: 120 },
     streetAddress: { type: String, required: true },
     streetAddress2: { type: String, default: '' },
     city: { type: String, required: true },

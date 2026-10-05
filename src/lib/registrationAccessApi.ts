@@ -8,10 +8,11 @@ export interface RegistrationAccessItem {
   fee: number
   feeLabel: string
   paymentOption: 'pay_now' | 'pay_later'
-  status: 'pending' | 'verified' | 'rejected'
-  createdAt: string
   paymentState: PaymentState
-  canUploadPaymentProof: boolean
+  uploadedAt?: string
+  age: number
+  createdAt?: string
+  status?: string
 }
 
 interface ApiFailure {

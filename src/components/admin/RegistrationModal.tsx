@@ -42,6 +42,7 @@ function itemToForm(item: Registration): FormState {
     gender: item.gender,
     phone: item.phone,
     email: item.email,
+    age: item.age,
     streetAddress: item.streetAddress,
     streetAddress2: item.streetAddress2 || '',
     city: item.city,
@@ -116,11 +117,11 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
-  const updateAttendee = (index: number, key: 'firstName' | 'lastName' | 'gender' | 'phone' | 'occupation' | 'programPreference' | 'emergencyContactName' | 'emergencyContactNumber', value: string) => {
+  const updateAttendee = (index: number, key: 'firstName' | 'lastName' | 'gender' | 'phone' | 'occupation' | 'programPreference' | 'emergencyContactName' | 'emergencyContactNumber' | 'age', value: string) => {
     setForm((prev) => prev ? {
       ...prev,
       additionalAttendees: (prev.additionalAttendees || []).map((person, personIndex) =>
-        personIndex === index ? { ...person, [key]: value } : person,
+        personIndex === index ? { ...person, [key]: (key === 'age' ? Number(value) || 0 : value) as any } : person,
       ),
     } : prev)
   }
@@ -135,10 +136,10 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
   const addAttendee = () => {
     setForm((prev) => prev ? {
       ...prev,
-      additionalAttendees: [...(prev.additionalAttendees || []), {
+        additionalAttendees: [...(prev.additionalAttendees || []), {
         firstName: '', lastName: '', fullName: '', gender: 'Male', phone: '', occupation: 'Student',
         programPreference: 'All the Days', fee: 0, feeLabel: 'Student',
-        emergencyContactName: '', emergencyContactNumber: '',
+        emergencyContactName: '', emergencyContactNumber: '', age: 0,
       }],
     } : prev)
   }
@@ -377,6 +378,9 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     <Field label="Email">
                       <input type="email" className={inputCls} value={form.email} onChange={(e) => updateForm('email', e.target.value)} />
                     </Field>
+                    <Field label="Age">
+                      <input type="number" inputMode="numeric" pattern="\d{1,3}" min={1} max={120} className={inputCls} value={form.age ?? ''} onChange={(e) => updateForm('age', e.target.value.replace(/\D/g,'').slice(0,3))} />
+                    </Field>
                     <Field label="Occupation">
                       <select className={inputCls} value={form.occupation} onChange={(e) => updateForm('occupation', e.target.value)}>
                         {OCCUPATIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -448,6 +452,7 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                             <Field label="Gender"><select className={inputCls} value={person.gender} onChange={(e) => updateAttendee(index, 'gender', e.target.value)}>{GENDERS.map((value) => <option key={value}>{value}</option>)}</select></Field>
                             <InternationalPhoneInput id={`admin-${id}-attendee-${index}-phone`} label="Attendee phone" value={person.phone} onChange={(value) => updateAttendee(index, 'phone', value)} />
                             <Field label="Occupation"><select className={inputCls} value={person.occupation} onChange={(e) => updateAttendee(index, 'occupation', e.target.value)}>{OCCUPATIONS.map((value) => <option key={value}>{value}</option>)}</select></Field>
+                            <Field label="Age"><input type="number" inputMode="numeric" pattern="\d{1,3}" min={1} max={120} className={inputCls} value={person.age ?? ''} onChange={(e) => updateAttendee(index, 'age', e.target.value.replace(/\D/g,'').slice(0,3))} /></Field>
                             <Field label="Program"><select className={inputCls} value={person.programPreference} onChange={(e) => updateAttendee(index, 'programPreference', e.target.value)}>{PROGRAM_PREFERENCES.map((value) => <option key={value}>{value}</option>)}</select></Field>
                             <Field label="Emergency Contact Name"><input className={inputCls} value={person.emergencyContactName} onChange={(e) => updateAttendee(index, 'emergencyContactName', e.target.value)} /></Field>
                             <InternationalPhoneInput id={`admin-${id}-attendee-${index}-emergency-phone`} label="Emergency Contact Number" value={person.emergencyContactNumber} onChange={(value) => updateAttendee(index, 'emergencyContactNumber', value)} />

@@ -197,6 +197,7 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       gender: registrationBody.gender,
       phone: registrationBody.phone.trim(),
       email,
+      age: Number(registrationBody.age),
       streetAddress: registrationBody.streetAddress.trim(),
       streetAddress2: registrationBody.streetAddress2?.trim() || '',
       city: registrationBody.city.trim(),
