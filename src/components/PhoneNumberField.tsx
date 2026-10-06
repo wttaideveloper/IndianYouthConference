@@ -50,7 +50,7 @@ export default function PhoneNumberField({
         <input
           id={`${id}-local-number`}
           type="tel"
-          inputMode="tel"
+          inputMode="numeric"
           autoComplete="tel-national"
           required={required}
           aria-label={`${label} local number`}

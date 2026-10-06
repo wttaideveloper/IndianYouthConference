@@ -25,6 +25,7 @@ export const OCCUPATIONS = [
   'Missionary Volunteer',
 
   'Working',
+  'Dependent',
 
 ] as const
 

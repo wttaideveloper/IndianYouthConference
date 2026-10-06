@@ -12,6 +12,7 @@ import {
 import Registration from '../models/Registration.js'
 import { isDBConnected } from '../db.js'
 import { isValidRegistrationPhoneNumber } from '../lib/countryPhoneValidation.js'
+import { normalizeGroupAttendees } from '../lib/groupRegistrationHelpers.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const uploadsDir = path.join(__dirname, '..', 'uploads')
@@ -123,6 +124,17 @@ function validateBody(body) {
 
 router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
   try {
+    let additionalAttendees = []
+    try {
+      additionalAttendees = req.body.additionalAttendees ? JSON.parse(req.body.additionalAttendees) : []
+    } catch {
+      await removeUploadedFile(req.file)
+      return res.status(400).json({ success: false, errors: ['Invalid group attendee details.'] })
+    }
+    if (!Array.isArray(additionalAttendees) || additionalAttendees.length > 24) {
+      await removeUploadedFile(req.file)
+      return res.status(400).json({ success: false, errors: ['A group can include up to 25 attendees, including the organizer.'] })
+    }
     const registrationBody = {
       ...req.body,
       paymentOption: req.body.paymentOption || 'pay_now',
@@ -143,7 +155,8 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       })
     }
 
-    const errors = validateBody(registrationBody)
+    const groupValidation = normalizeGroupAttendees(additionalAttendees)
+    const errors = [...validateBody(registrationBody), ...groupValidation.errors]
     if (errors.length > 0) {
       await removeUploadedFile(req.file)
       return res.status(400).json({ success: false, errors })
@@ -169,10 +182,13 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       })
     }
 
-    const { fee, label: feeLabel } = calculateFee(
+    const primaryFee = calculateFee(
       registrationBody.occupation,
       registrationBody.programPreference || '',
     )
+    const normalizedAttendees = groupValidation.attendees
+    const fee = primaryFee.fee + normalizedAttendees.reduce((sum, person) => sum + person.fee, 0)
+    const feeLabel = normalizedAttendees.length ? `Group of ${normalizedAttendees.length + 1}` : primaryFee.label
 
     const data = {
       firstName: registrationBody.firstName.trim(),
@@ -197,6 +213,7 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       emergencyContactNumber: registrationBody.emergencyContactNumber.trim(),
       fee,
       feeLabel,
+      additionalAttendees: normalizedAttendees,
       paymentOption,
       ...(req.file
         ? {
@@ -241,7 +258,10 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
           ? 'Registration submitted successfully. You will receive a confirmation email once your payment is verified by our team.'
           : 'Registration submitted successfully. Our team will review your payment and contact you shortly.'
 
-    res.json({ success: true, message: successMessage, id: saved._id })
+    const groupSummary = normalizedAttendees.length
+      ? `Group booking for ${normalizedAttendees.length + 1} attendees submitted. Total fee: ₹${fee}. `
+      : ''
+    res.json({ success: true, message: `${groupSummary}${successMessage}`, id: saved._id })
   } catch (err) {
     await removeUploadedFile(req.file)
     if (err?.code === 11000) {

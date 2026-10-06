@@ -4,6 +4,7 @@ import {
   X, Loader2, Save, ImageIcon, MapPin, Calendar,
   Phone, Mail, CheckCircle, Clock, XCircle, ZoomIn, Pencil, Trash2, AlertTriangle, MessageCircle,
 } from 'lucide-react'
+import InternationalPhoneInput from '../InternationalPhoneInput'
 import {
   fetchRegistration,
   updateRegistration,
@@ -55,6 +56,7 @@ function itemToForm(item: Registration): FormState {
     pastAttendance: item.pastAttendance,
     emergencyContactName: item.emergencyContactName,
     emergencyContactNumber: item.emergencyContactNumber,
+    additionalAttendees: item.additionalAttendees || [],
     status: item.status,
     adminNotes: item.adminNotes || '',
   }
@@ -102,8 +104,43 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
     return calculateFee(form.occupation, form.programPreference || '')
   }, [form?.occupation, form?.programPreference])
 
+  const groupFeePreview = useMemo(() => {
+    const attendeeFees = (form?.additionalAttendees || []).reduce((sum, person) => {
+      if (!person.occupation || !person.programPreference) return sum
+      return sum + calculateFee(person.occupation, person.programPreference).fee
+    }, 0)
+    return (feePreview?.fee || 0) + attendeeFees
+  }, [feePreview, form?.additionalAttendees])
+
   const updateForm = (key: keyof FormState, value: string) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
+  }
+
+  const updateAttendee = (index: number, key: 'firstName' | 'lastName' | 'gender' | 'phone' | 'occupation' | 'programPreference' | 'emergencyContactName' | 'emergencyContactNumber', value: string) => {
+    setForm((prev) => prev ? {
+      ...prev,
+      additionalAttendees: (prev.additionalAttendees || []).map((person, personIndex) =>
+        personIndex === index ? { ...person, [key]: value } : person,
+      ),
+    } : prev)
+  }
+
+  const removeAttendee = (index: number) => {
+    setForm((prev) => prev ? {
+      ...prev,
+      additionalAttendees: (prev.additionalAttendees || []).filter((_person, personIndex) => personIndex !== index),
+    } : prev)
+  }
+
+  const addAttendee = () => {
+    setForm((prev) => prev ? {
+      ...prev,
+      additionalAttendees: [...(prev.additionalAttendees || []), {
+        firstName: '', lastName: '', fullName: '', gender: 'Male', phone: '', occupation: 'Student',
+        programPreference: 'All the Days', fee: 0, feeLabel: 'Student',
+        emergencyContactName: '', emergencyContactNumber: '',
+      }],
+    } : prev)
   }
 
   useEffect(() => {
@@ -272,7 +309,7 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     </h2>
                     <p className="text-white/50 text-sm">
                       {isEditing ? item.fullName : `${item.occupation} · ₹${item.fee}`}
-                      {isEditing && feePreview && ` · ₹${feePreview.fee} (preview)`}
+                      {isEditing && feePreview && ` · ₹${groupFeePreview} ${form?.additionalAttendees?.length ? `(group of ${(form.additionalAttendees?.length || 0) + 1} preview)` : '(preview)'}`}
                     </p>
                   </div>
                 </div>
@@ -336,9 +373,7 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                         {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
                       </select>
                     </Field>
-                    <Field label="Phone">
-                      <input className={inputCls} value={form.phone} onChange={(e) => updateForm('phone', e.target.value)} />
-                    </Field>
+                    <InternationalPhoneInput id={`admin-${id}-phone`} label="Phone" value={form.phone || ''} onChange={(value) => updateForm('phone', value)} />
                     <Field label="Email">
                       <input type="email" className={inputCls} value={form.email} onChange={(e) => updateForm('email', e.target.value)} />
                     </Field>
@@ -389,14 +424,44 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                     <Field label="Emergency Contact Name">
                       <input className={inputCls} value={form.emergencyContactName} onChange={(e) => updateForm('emergencyContactName', e.target.value)} />
                     </Field>
-                    <Field label="Emergency Contact Number">
-                      <input className={inputCls} value={form.emergencyContactNumber} onChange={(e) => updateForm('emergencyContactNumber', e.target.value)} />
-                    </Field>
+                    <InternationalPhoneInput id={`admin-${id}-emergency-phone`} label="Emergency Contact Number" value={form.emergencyContactNumber || ''} onChange={(value) => updateForm('emergencyContactNumber', value)} />
                   </div>
+
+                  {
+                    <section className="rounded-2xl border border-primary/15 bg-primary/[0.025] p-5 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">{form.additionalAttendees?.length ? `Group attendees · ${form.additionalAttendees.length + 1} people` : 'Add group attendees'}</p>
+                          <p className="mt-1 text-xs text-gray-500">Organizer details above apply to the shared address and travel information.</p>
+                        </div>
+                        {(form.additionalAttendees?.length || 0) < 24 && <button type="button" onClick={addAttendee} className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white">Add attendee</button>}
+                      </div>
+                      {(form.additionalAttendees || []).map((person, index) => {
+                        const memberFee = person.occupation && person.programPreference
+                          ? calculateFee(person.occupation, person.programPreference)
+                          : { fee: 0, label: '' }
+                        return <div key={index} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+                          <div className="flex items-center justify-between"><p className="text-sm font-semibold text-navy">Attendee {index + 2}</p><button type="button" onClick={() => removeAttendee(index)} className="inline-flex items-center gap-1 text-xs text-red-600"><Trash2 size={13} /> Remove</button></div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <Field label="First Name"><input className={inputCls} value={person.firstName} onChange={(e) => updateAttendee(index, 'firstName', e.target.value)} /></Field>
+                            <Field label="Last Name"><input className={inputCls} value={person.lastName} onChange={(e) => updateAttendee(index, 'lastName', e.target.value)} /></Field>
+                            <Field label="Gender"><select className={inputCls} value={person.gender} onChange={(e) => updateAttendee(index, 'gender', e.target.value)}>{GENDERS.map((value) => <option key={value}>{value}</option>)}</select></Field>
+                            <InternationalPhoneInput id={`admin-${id}-attendee-${index}-phone`} label="Attendee phone" value={person.phone} onChange={(value) => updateAttendee(index, 'phone', value)} />
+                            <Field label="Occupation"><select className={inputCls} value={person.occupation} onChange={(e) => updateAttendee(index, 'occupation', e.target.value)}>{OCCUPATIONS.map((value) => <option key={value}>{value}</option>)}</select></Field>
+                            <Field label="Program"><select className={inputCls} value={person.programPreference} onChange={(e) => updateAttendee(index, 'programPreference', e.target.value)}>{PROGRAM_PREFERENCES.map((value) => <option key={value}>{value}</option>)}</select></Field>
+                            <Field label="Emergency Contact Name"><input className={inputCls} value={person.emergencyContactName} onChange={(e) => updateAttendee(index, 'emergencyContactName', e.target.value)} /></Field>
+                            <InternationalPhoneInput id={`admin-${id}-attendee-${index}-emergency-phone`} label="Emergency Contact Number" value={person.emergencyContactNumber} onChange={(value) => updateAttendee(index, 'emergencyContactNumber', value)} />
+                          </div>
+                          <p className="text-xs font-semibold text-primary">Attendee fee: ₹{memberFee.fee} · {memberFee.label}</p>
+                        </div>
+                      })}
+                      <p className="text-right text-sm font-bold text-navy">Updated booking total: ₹{groupFeePreview}</p>
+                    </section>
+                  }
 
                   {feePreview && (
                     <p className="text-sm text-primary font-medium bg-primary/5 rounded-xl px-4 py-2.5">
-                      Updated fee: ₹{feePreview.fee} ({feePreview.label})
+                      {form.additionalAttendees?.length ? `Updated group fee: ₹${groupFeePreview} (${form.additionalAttendees.length + 1} attendees)` : `Updated fee: ₹${feePreview.fee} (${feePreview.label})`}
                     </p>
                   )}
 
@@ -512,6 +577,21 @@ export default function RegistrationModal({ id, startEditing = false, onClose, o
                       <Calendar size={12} /> Submitted {new Date(item.createdAt).toLocaleString('en-IN')}
                     </p>
                   </div>
+
+                  {item.additionalAttendees?.length ? (
+                    <div>
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Group attendees · {item.additionalAttendees.length + 1} people</p>
+                      <div className="space-y-2">
+                        {[{ fullName: item.fullName, occupation: item.occupation, programPreference: item.programPreference, fee: calculateFee(item.occupation, item.programPreference).fee }, ...item.additionalAttendees].map((person, index) => (
+                          <div key={`${person.fullName}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm">
+                            <div><span className="font-semibold text-navy">{index + 1}. {person.fullName}</span><span className="ml-2 text-gray-500">{index === 0 ? 'Organizer' : person.occupation} {index > 0 ? `· ${person.programPreference}` : ''}</span></div>
+                            <span className="font-semibold text-primary">₹{person.fee}</span>
+                          </div>
+                        ))}
+                        <p className="text-right text-sm font-bold text-navy">Group total · ₹{item.fee}</p>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div>
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">

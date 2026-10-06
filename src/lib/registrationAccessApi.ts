@@ -3,6 +3,7 @@ export type PaymentState = 'not_submitted' | 'under_review' | 'verified' | 'reje
 export interface RegistrationAccessItem {
   registrationId: string
   fullName: string
+  attendees: string[]
   email: string
   fee: number
   feeLabel: string
