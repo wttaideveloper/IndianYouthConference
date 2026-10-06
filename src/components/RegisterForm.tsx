@@ -31,6 +31,7 @@ interface FormData {
   firstName: string
   lastName: string
   gender: string
+  age: string
   email: string
   streetAddress: string
   streetAddress2: string
@@ -51,6 +52,7 @@ const INITIAL: FormData = {
   firstName: '',
   lastName: '',
   gender: '',
+  age: '',
   email: '',
   streetAddress: '',
   streetAddress2: '',
@@ -70,7 +72,7 @@ const INITIAL: FormData = {
 const DUPLICATE_EMAIL_MESSAGE = 'A registration with this email already exists. Please use Already Registered to view or continue your registration.'
 
 type AdditionalAttendee = {
-  firstName: string; lastName: string; gender: string; phone: string; occupation: string
+  firstName: string; lastName: string; gender: string; age: string; phone: string; occupation: string
   programPreference: string; emergencyContactName: string; emergencyContactNumber: string
 }
 
@@ -275,6 +277,10 @@ export default function RegisterForm() {
     if (!form.firstName.trim()) errs.firstName = 'First name is required'
     if (!form.lastName.trim()) errs.lastName = 'Last name is required'
     if (!form.gender) errs.gender = 'Please select a gender'
+    const primaryAge = form.age.trim()
+    if (!/^\d{1,3}$/.test(primaryAge) || Number(primaryAge) < 1 || Number(primaryAge) > 120) {
+      errs.age = 'Age must be a number between 1 and 120'
+    }
     const phoneError = phoneValidationError('Phone number', phoneCountryCode, phoneLocalNumber)
     if (phoneError) errs.phone = phoneError
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
@@ -311,6 +317,10 @@ export default function RegisterForm() {
       if (!attendee.firstName.trim()) errs[`attendee${index}First`] = `${label}: first name is required`
       if (!attendee.lastName.trim()) errs[`attendee${index}Last`] = `${label}: last name is required`
       if (!GENDERS.includes(attendee.gender as typeof GENDERS[number])) errs[`attendee${index}Gender`] = `${label}: select a gender`
+      const attendeeAge = attendee.age.trim()
+      if (!/^\d{1,3}$/.test(attendeeAge) || Number(attendeeAge) < 1 || Number(attendeeAge) > 120) {
+        errs[`attendee${index}Age`] = `${label}: age must be a number between 1 and 120`
+      }
       const attendeePhoneError = groupPhoneError(attendee.phone, `${label} phone number`)
       if (attendeePhoneError) errs[`attendee${index}Phone`] = attendeePhoneError
       if (!attendee.occupation) errs[`attendee${index}Occupation`] = `${label}: select an occupation`
@@ -325,6 +335,7 @@ export default function RegisterForm() {
     firstName: 'firstName',
     lastName: 'lastName',
     gender: 'gender',
+    age: 'age',
     phone: 'phone-local-number',
     email: 'email',
     streetAddress: 'streetAddress',
@@ -346,6 +357,7 @@ export default function RegisterForm() {
     'firstName',
     'lastName',
     'gender',
+    'age',
     'phone',
     'email',
     'streetAddress',
@@ -364,8 +376,10 @@ export default function RegisterForm() {
 
   const focusFirstError = (validationErrors: Record<string, string>, screenshotMissing: boolean) => {
     const firstErrorKey = FIELD_ORDER.find((key) => key in validationErrors) || (screenshotMissing ? 'screenshot' : null)
-    if (!firstErrorKey) return
-    const targetId = FIELD_ID_MAP[firstErrorKey]
+    const groupAgeError = Object.keys(validationErrors).find((key) => /^attendee\d+Age$/.test(key))
+    if (!firstErrorKey && !groupAgeError) return
+    const groupAgeIndex = groupAgeError?.match(/^attendee(\d+)Age$/)?.[1]
+    const targetId = firstErrorKey ? FIELD_ID_MAP[firstErrorKey] : `attendee-${groupAgeIndex}-age`
     window.requestAnimationFrame(() => {
       const el = document.getElementById(targetId) || document.querySelector(`[data-field="${firstErrorKey}"]`) as HTMLElement | null
       if (el) {
@@ -494,7 +508,7 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* Gender & Phone */}
+      {/* Gender, age and phone */}
       <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -505,16 +519,35 @@ export default function RegisterForm() {
             </select>
             <FieldError error={fieldErrors.gender} />
           </div>
-          <PhoneNumberField
-            id="phone"
-            label="Phone Number"
-            required
-            countryCode={phoneCountryCode}
-            localNumber={phoneLocalNumber}
-            onCountryCodeChange={(value) => handleCountryCodeChange('phone', value)}
-            onLocalNumberChange={(value) => handleLocalNumberChange('phone', value)}
-            error={fieldErrors.phone}
-          />
+          <div>
+            <label htmlFor="age" className="text-xs font-medium text-gray-500 mb-1.5 block">Age *</label>
+            <input
+              id="age"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{1,3}"
+              maxLength={3}
+              required
+              placeholder="Age *"
+              value={form.age}
+              onChange={(event) => update('age', event.target.value.replace(/\D/g, '').slice(0, 3))}
+              className="input-modern"
+              aria-invalid={Boolean(fieldErrors.age)}
+            />
+            <FieldError error={fieldErrors.age} />
+          </div>
+          <div className="sm:col-span-2">
+            <PhoneNumberField
+              id="phone"
+              label="Phone Number"
+              required
+              countryCode={phoneCountryCode}
+              localNumber={phoneLocalNumber}
+              onCountryCodeChange={(value) => handleCountryCodeChange('phone', value)}
+              onLocalNumberChange={(value) => handleLocalNumberChange('phone', value)}
+              error={fieldErrors.phone}
+            />
+          </div>
         </div>
       </div>
 
@@ -610,7 +643,7 @@ export default function RegisterForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="sectionConference" className="text-xs font-medium text-gray-500 mb-1.5 block">Section / Conference you are coming from *</label>
-            <input id="sectionConference" type="text" required value={form.sectionConference} onChange={(e) => update('sectionConference', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.sectionConference)} />
+            <input id="sectionConference" type="text" placeholder="Section / Conference *" required value={form.sectionConference} onChange={(e) => update('sectionConference', e.target.value)} className="input-modern" aria-invalid={Boolean(fieldErrors.sectionConference)} />
             <FieldError error={fieldErrors.sectionConference} />
           </div>
           <div>
@@ -695,7 +728,7 @@ export default function RegisterForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           <div>
             <label htmlFor="emergency-contact-name" className="text-xs font-medium text-gray-500 mb-1.5 block">Emergency Contact Name *</label>
-            <input id="emergency-contact-name" type="text" placeholder="Emergency contact name" required value={form.emergencyContactName} onChange={(e) => update('emergencyContactName', e.target.value)} className="input-modern" />
+            <input id="emergency-contact-name" type="text" placeholder="Emergency contact name *" required value={form.emergencyContactName} onChange={(e) => update('emergencyContactName', e.target.value)} className="input-modern" />
             <FieldError error={fieldErrors.emergencyContactName} />
           </div>
           <PhoneNumberField
@@ -713,12 +746,12 @@ export default function RegisterForm() {
 
       {/* Group attendees share the organizer's address, travel dates, section and referral details. */}
       <div className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+          <div className="min-w-0 flex-1">
             <SectionLabel>Group Registration</SectionLabel>
             <p className="-mt-2 text-xs text-gray-500">You are attendee 1 and the group organizer. Additional attendees share your address, section, travel dates and referral answers.</p>
           </div>
-          <button type="button" disabled={additionalAttendees.length >= 24} onClick={() => setAdditionalAttendees((items) => [...items, { firstName: '', lastName: '', gender: '', phone: '', occupation: '', programPreference: 'All the Days', emergencyContactName: '', emergencyContactNumber: '' }])} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" disabled={additionalAttendees.length >= 24} onClick={() => setAdditionalAttendees((items) => [...items, { firstName: '', lastName: '', gender: '', age: '', phone: '', occupation: '', programPreference: 'All the Days', emergencyContactName: '', emergencyContactNumber: '' }])} className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
             <Plus size={16} /> {additionalAttendees.length >= 24 ? 'Maximum group size reached' : 'Add attendee'}
           </button>
         </div>
@@ -726,7 +759,7 @@ export default function RegisterForm() {
           const setAttendee = (key: keyof AdditionalAttendee, value: string) => {
             setAdditionalAttendees((items) => items.map((item, i) => i === index ? { ...item, [key]: value } : item))
             const suffix: Partial<Record<keyof AdditionalAttendee, string>> = {
-              firstName: 'First', lastName: 'Last', gender: 'Gender', phone: 'Phone',
+              firstName: 'First', lastName: 'Last', gender: 'Gender', age: 'Age', phone: 'Phone',
               occupation: 'Occupation', emergencyContactName: 'Emergency', emergencyContactNumber: 'EmergencyPhone',
             }
             const errorKey = suffix[key] ? `attendee${index}${suffix[key]}` : ''
@@ -741,14 +774,46 @@ export default function RegisterForm() {
           return <div key={index} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between"><p className="font-semibold text-navy">Attendee {index + 2}</p><button type="button" onClick={() => { setAdditionalAttendees((items) => items.filter((_, i) => i !== index)); setFieldErrors((previous) => Object.fromEntries(Object.entries(previous).filter(([field]) => !field.startsWith('attendee')))) }} className="inline-flex items-center gap-1 text-xs text-red-600"><Trash2 size={14} /> Remove</button></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><input aria-label={`Attendee ${index + 2} first name`} className="input-modern" placeholder="First name *" value={attendee.firstName} onChange={(e) => setAttendee('firstName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}First`]} /></div>
-              <div><input aria-label={`Attendee ${index + 2} last name`} className="input-modern" placeholder="Last name *" value={attendee.lastName} onChange={(e) => setAttendee('lastName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}Last`]} /></div>
-              <div><select aria-label={`Attendee ${index + 2} gender`} className="input-modern" value={attendee.gender} onChange={(e) => setAttendee('gender', e.target.value)}><option value="">Gender *</option>{GENDERS.map((value) => <option key={value}>{value}</option>)}</select><FieldError error={fieldErrors[`attendee${index}Gender`]} /></div>
-              <div><InternationalPhoneInput id={`attendee-${index}-phone`} label={`Attendee ${index + 2} phone`} required value={attendee.phone} onChange={(value) => setAttendee('phone', value)} error={fieldErrors[`attendee${index}Phone`]} /></div>
-              <div><select aria-label={`Attendee ${index + 2} occupation`} className="input-modern" value={attendee.occupation} onChange={(e) => setAttendee('occupation', e.target.value)}><option value="">Occupation *</option>{OCCUPATIONS.map((value) => <option key={value}>{value}</option>)}</select><FieldError error={fieldErrors[`attendee${index}Occupation`]} /></div>
-              <div><select aria-label={`Attendee ${index + 2} program`} className="input-modern" value={attendee.programPreference} onChange={(e) => setAttendee('programPreference', e.target.value)}>{PROGRAM_PREFERENCES.map((value) => <option key={value}>{value}</option>)}</select></div>
-              <div><input aria-label={`Attendee ${index + 2} emergency contact name`} className="input-modern" placeholder="Emergency contact name *" value={attendee.emergencyContactName} onChange={(e) => setAttendee('emergencyContactName', e.target.value)} /><FieldError error={fieldErrors[`attendee${index}Emergency`]} /></div>
-              <div><InternationalPhoneInput id={`attendee-${index}-emergency-phone`} label={`Attendee ${index + 2} emergency contact number`} required value={attendee.emergencyContactNumber} onChange={(value) => setAttendee('emergencyContactNumber', value)} error={fieldErrors[`attendee${index}EmergencyPhone`]} /></div>
+              <div>
+                <label htmlFor={`attendee-${index}-first-name`} className="text-xs font-medium text-gray-500 mb-1.5 block">First name *</label>
+                <input id={`attendee-${index}-first-name`} required aria-label={`Attendee ${index + 2} first name`} placeholder="First name *" className="input-modern" value={attendee.firstName} onChange={(e) => setAttendee('firstName', e.target.value)} />
+                <FieldError error={fieldErrors[`attendee${index}First`]} />
+              </div>
+              <div>
+                <label htmlFor={`attendee-${index}-last-name`} className="text-xs font-medium text-gray-500 mb-1.5 block">Last name *</label>
+                <input id={`attendee-${index}-last-name`} required aria-label={`Attendee ${index + 2} last name`} placeholder="Last name *" className="input-modern" value={attendee.lastName} onChange={(e) => setAttendee('lastName', e.target.value)} />
+                <FieldError error={fieldErrors[`attendee${index}Last`]} />
+              </div>
+              <div>
+                <label htmlFor={`attendee-${index}-gender`} className="text-xs font-medium text-gray-500 mb-1.5 block">Gender *</label>
+                <select id={`attendee-${index}-gender`} aria-label={`Attendee ${index + 2} gender`} required className="input-modern" value={attendee.gender} onChange={(e) => setAttendee('gender', e.target.value)}><option value="">Please select</option>{GENDERS.map((value) => <option key={value}>{value}</option>)}</select>
+                <FieldError error={fieldErrors[`attendee${index}Gender`]} />
+              </div>
+              <div>
+                <label htmlFor={`attendee-${index}-age`} className="text-xs font-medium text-gray-500 mb-1.5 block">Age *</label>
+                <input id={`attendee-${index}-age`} aria-label={`Attendee ${index + 2} age`} type="text" inputMode="numeric" pattern="[0-9]{1,3}" maxLength={3} required className="input-modern" placeholder="Age *" value={attendee.age} onChange={(e) => setAttendee('age', e.target.value.replace(/\D/g, '').slice(0, 3))} aria-invalid={Boolean(fieldErrors[`attendee${index}Age`])} />
+                <FieldError error={fieldErrors[`attendee${index}Age`]} />
+              </div>
+              <div>
+                <label htmlFor={`attendee-${index}-occupation`} className="text-xs font-medium text-gray-500 mb-1.5 block">Occupation *</label>
+                <select id={`attendee-${index}-occupation`} aria-label={`Attendee ${index + 2} occupation`} required className="input-modern" value={attendee.occupation} onChange={(e) => setAttendee('occupation', e.target.value)}><option value="">Please select</option>{OCCUPATIONS.map((value) => <option key={value}>{value}</option>)}</select>
+                <FieldError error={fieldErrors[`attendee${index}Occupation`]} />
+              </div>
+              <div>
+                <label htmlFor={`attendee-${index}-program`} className="text-xs font-medium text-gray-500 mb-1.5 block">Program preference *</label>
+                <select id={`attendee-${index}-program`} aria-label={`Attendee ${index + 2} program`} required className="input-modern" value={attendee.programPreference} onChange={(e) => setAttendee('programPreference', e.target.value)}>{PROGRAM_PREFERENCES.map((value) => <option key={value}>{value}</option>)}</select>
+              </div>
+              <div className="sm:col-span-2">
+                <InternationalPhoneInput id={`attendee-${index}-phone`} label={`Attendee ${index + 2} phone`} required value={attendee.phone} onChange={(value) => setAttendee('phone', value)} error={fieldErrors[`attendee${index}Phone`]} />
+              </div>
+              <div>
+                <label htmlFor={`attendee-${index}-emergency-name`} className="text-xs font-medium text-gray-500 mb-1.5 block">Emergency contact name *</label>
+                <input id={`attendee-${index}-emergency-name`} required aria-label={`Attendee ${index + 2} emergency contact name`} placeholder="Emergency contact name *" className="input-modern" value={attendee.emergencyContactName} onChange={(e) => setAttendee('emergencyContactName', e.target.value)} />
+                <FieldError error={fieldErrors[`attendee${index}Emergency`]} />
+              </div>
+              <div>
+                <InternationalPhoneInput id={`attendee-${index}-emergency-phone`} label={`Attendee ${index + 2} emergency contact number`} required value={attendee.emergencyContactNumber} onChange={(value) => setAttendee('emergencyContactNumber', value)} error={fieldErrors[`attendee${index}EmergencyPhone`]} />
+              </div>
             </div>
           </div>
         })}

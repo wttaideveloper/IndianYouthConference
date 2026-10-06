@@ -39,6 +39,14 @@ export function validateRegistrationFields(body, { partial = false } = {}) {
   if (body.gender !== undefined && !GENDERS.includes(body.gender)) {
     errors.push('Please select a valid gender')
   }
+  req('age', 'Age is required')
+  if (body.age !== undefined) {
+    const ageRaw = body.age.toString().trim()
+    const age = Number(ageRaw)
+    if (!ageRaw || !Number.isFinite(age) || age < 1 || age > 120 || !/^\d{1,3}$/.test(ageRaw)) {
+      errors.push('Age must be a number between 1 and 120 (max 3 digits)')
+    }
+  }
   if (body.phone !== undefined) {
     if (!isValidPhoneNumber(body.phone)) {
       errors.push('A valid phone number is required')
@@ -88,7 +96,7 @@ export function buildRegistrationUpdate(body) {
 
   const stringFields = [
     'firstName', 'lastName', 'gender', 'phone', 'email',
-    'streetAddress', 'streetAddress2', 'city', 'state', 'postalCode',
+    'age', 'streetAddress', 'streetAddress2', 'city', 'state', 'postalCode',
     'sectionConference', 'occupation', 'arrivalDate', 'departureDate',
     'programPreference', 'howDidYouKnow', 'pastAttendance',
     'emergencyContactName', 'emergencyContactNumber', 'status', 'paymentOption', 'adminNotes',
@@ -101,6 +109,9 @@ export function buildRegistrationUpdate(body) {
   }
 
   if (updates.email) updates.email = updates.email.toLowerCase()
+  if (updates.age !== undefined) {
+    updates.age = Number(updates.age)
+  }
   if (updates.firstName || updates.lastName) {
     const first = updates.firstName
     const last = updates.lastName

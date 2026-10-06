@@ -88,7 +88,30 @@ export function calculateFee(
 
 
 export const PAYMENT_NOTE =
+  'Registration Rs.1000 for Students, Pastors & Missionary Volunteers. Rs.1350 for Working Professionals. Only over the Weekend Rs.500'
 
-  'Registration ₹1000 for Students, Pastors & Missionary Volunteers. ₹1350 for Working Professionals. Only over the Weekend ₹500'
+export const MIN_AGE = 1
+export const MAX_AGE = 120
 
-
+export interface FormData {
+  firstName: string
+  lastName: string
+  gender: string
+  phone: string
+  email: string
+  age: string
+  streetAddress: string
+  streetAddress2: string
+  city: string
+  state: string
+  postalCode: string
+  sectionConference: string
+  occupation: string
+  arrivalDate: string
+  departureDate: string
+  programPreference: string
+  howDidYouKnow: string
+  pastAttendance: string
+  emergencyContactName: string
+  emergencyContactNumber: string
+}
