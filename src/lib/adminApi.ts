@@ -78,6 +78,7 @@ export interface RegistrationFilters {
   search?: string
   status?: string
   paymentStatus?: string
+  paymentOption?: string
   gender?: string
   occupation?: string
   programPreference?: string
@@ -103,6 +104,9 @@ export interface AdminEmailPreview {
   recipientCount: number
   skippedInvalidEmails: number
   duplicateEmailsSkipped: number
+  dailyBulkLimit?: number
+  dailyBulkRemaining?: number
+  dailyBulkUsed?: number
 }
 
 export interface AdminEmailCampaignSummary {
@@ -167,10 +171,11 @@ export interface Registration {
   }
 }
 
-export function paymentStatusLabel(status: string, hasScreenshot: boolean) {
+export function paymentStatusLabel(status: string, hasScreenshot: boolean, paymentOption?: string) {
   if (status === 'verified') return 'Paid / Verified'
   if (status === 'rejected') return 'Payment Rejected'
-  return hasScreenshot ? 'Payment Under Review' : 'Payment Pending'
+  if (hasScreenshot) return 'Payment Under Review'
+  return paymentOption === 'pay_later' ? 'Pay Later (Pending)' : 'Payment Pending'
 }
 
 function toQuery(filters: RegistrationFilters) {

@@ -46,8 +46,43 @@ function buildFilter(query) {
   }
 
   if (query.status) conditions.push({ status: query.status })
+  if (query.paymentOption) filter.paymentOption = query.paymentOption
   if (query.paymentStatus === 'paid') {
     conditions.push({
+      $or: [
+        { status: 'verified' },
+        { 'paymentScreenshot.path': { $exists: true, $nin: [null, ''] } },
+        { 'paymentScreenshot.filename': { $exists: true, $nin: [null, ''] } },
+      ],
+    })
+  }
+  if (query.paymentStatus === 'pay_later_unpaid') {
+    conditions.push({
+      paymentOption: 'pay_later',
+      status: { $ne: 'verified' },
+      $and: [
+        {
+          $or: [
+            { paymentScreenshot: { $exists: false } },
+            { paymentScreenshot: null },
+            { 'paymentScreenshot.path': { $exists: false } },
+            { 'paymentScreenshot.path': { $in: [null, ''] } },
+          ],
+        },
+        {
+          $or: [
+            { paymentScreenshot: { $exists: false } },
+            { paymentScreenshot: null },
+            { 'paymentScreenshot.filename': { $exists: false } },
+            { 'paymentScreenshot.filename': { $in: [null, ''] } },
+          ],
+        },
+      ],
+    })
+  }
+  if (query.paymentStatus === 'payment_under_review') {
+    conditions.push({
+      status: 'pending',
       $or: [
         { 'paymentScreenshot.path': { $exists: true, $nin: [null, ''] } },
         { 'paymentScreenshot.filename': { $exists: true, $nin: [null, ''] } },
@@ -56,6 +91,7 @@ function buildFilter(query) {
   }
   if (query.paymentStatus === 'not_paid') {
     conditions.push({
+      status: { $ne: 'verified' },
       $and: [
         {
           $or: [
@@ -160,7 +196,7 @@ const EMAIL_AUDIENCES = new Set(['all', 'verified', 'payment_under_review', 'pay
 const EMAIL_RECIPIENT_FIELDS = 'email fullName fee status paymentOption'
 const EMAIL_SUBJECT_MAX_LENGTH = 160
 const EMAIL_MESSAGE_MAX_LENGTH = 10_000
-const EMAIL_CAMPAIGN_HARD_LIMIT = 100
+const EMAIL_CAMPAIGN_HARD_LIMIT = 500
 
 function positiveInteger(value, fallback, maximum = Number.MAX_SAFE_INTEGER) {
   const parsed = Number.parseInt(value, 10)
@@ -169,10 +205,11 @@ function positiveInteger(value, fallback, maximum = Number.MAX_SAFE_INTEGER) {
 
 function adminEmailConfig() {
   return {
-    maximumRecipients: positiveInteger(process.env.ADMIN_EMAIL_MAX_RECIPIENTS, 100, EMAIL_CAMPAIGN_HARD_LIMIT),
-    concurrency: positiveInteger(process.env.ADMIN_EMAIL_CONCURRENCY, 3, 3),
+    maximumRecipients: positiveInteger(process.env.ADMIN_EMAIL_MAX_RECIPIENTS, 500, EMAIL_CAMPAIGN_HARD_LIMIT),
+    concurrency: positiveInteger(process.env.ADMIN_EMAIL_CONCURRENCY, 5, 10),
     perMinute: positiveInteger(process.env.ADMIN_EMAIL_RATE_PER_MINUTE, 1),
     perHour: positiveInteger(process.env.ADMIN_EMAIL_RATE_PER_HOUR, 10),
+    dailyRecipientLimit: positiveInteger(process.env.ADMIN_EMAIL_DAILY_RECIPIENT_LIMIT, 1500),
   }
 }
 
@@ -285,13 +322,59 @@ function campaignSummary(campaign) {
   }
 }
 
-async function campaignRateLimitExceeded(adminId, config) {
+async function getDailyBulkRecipientsCount() {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const result = await AdminEmailCampaign.aggregate([
+    {
+      $match: {
+        audience: { $ne: 'individual' },
+        status: { $in: ['completed', 'processing'] },
+        startedAt: { $gte: dayAgo },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$recipientCount' },
+      },
+    },
+  ])
+  return result[0]?.total || 0
+}
+
+async function campaignRateLimitExceeded(adminId, config, audience = 'all', requestedRecipientCount = 0) {
   const now = Date.now()
-  const [minuteCount, hourCount] = await Promise.all([
+  const checks = [
     AdminEmailCampaign.countDocuments({ adminId, startedAt: { $gte: new Date(now - 60 * 1000) } }),
     AdminEmailCampaign.countDocuments({ adminId, startedAt: { $gte: new Date(now - 60 * 60 * 1000) } }),
-  ])
-  return minuteCount >= config.perMinute || hourCount >= config.perHour
+  ]
+  if (audience !== 'individual') {
+    checks.push(getDailyBulkRecipientsCount())
+  }
+  const [minuteCount, hourCount, dayBulkRecipients] = await Promise.all(checks)
+  if (minuteCount >= config.perMinute) {
+    return { exceeded: true, message: 'Please wait a minute before sending another email campaign.' }
+  }
+  if (hourCount >= config.perHour) {
+    return { exceeded: true, message: 'Hourly email campaign limit reached. Please try again later.' }
+  }
+  if (audience !== 'individual') {
+    const used = dayBulkRecipients ?? 0
+    const remaining = Math.max(0, config.dailyRecipientLimit - used)
+    if (used >= config.dailyRecipientLimit) {
+      return {
+        exceeded: true,
+        message: `Daily bulk email quota exhausted (${config.dailyRecipientLimit} emails sent in the last 24 hours). Please wait for the 24-hour quota to reset.`,
+      }
+    }
+    if (requestedRecipientCount > remaining) {
+      return {
+        exceeded: true,
+        message: `This campaign needs ${requestedRecipientCount} emails, but only ${remaining} bulk emails remain in today's quota (${config.dailyRecipientLimit} max per 24 hours).`,
+      }
+    }
+  }
+  return { exceeded: false }
 }
 
 async function sendRecipientsWithConcurrency(recipients, payload, campaignId, concurrency) {
@@ -361,12 +444,25 @@ router.post('/emails/preview', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Registration not found' })
     }
 
+    const config = adminEmailConfig()
+    let dailyBulkRemaining = undefined
+    let dailyBulkLimit = undefined
+    let dailyBulkUsed = undefined
+    if (parsed.audience !== 'individual') {
+      dailyBulkUsed = await getDailyBulkRecipientsCount()
+      dailyBulkLimit = config.dailyRecipientLimit
+      dailyBulkRemaining = Math.max(0, config.dailyRecipientLimit - dailyBulkUsed)
+    }
+
     return res.json({
       success: true,
       audience: parsed.audience,
       recipientCount: resolved.recipients.length,
       skippedInvalidEmails: resolved.skippedInvalidEmails,
       duplicateEmailsSkipped: resolved.duplicateEmailsSkipped,
+      dailyBulkLimit,
+      dailyBulkRemaining,
+      dailyBulkUsed,
     })
   } catch (err) {
     console.error('Admin email preview failed:', err.message)
@@ -428,8 +524,14 @@ router.post('/emails/send', requireRole('admin'), async (req, res) => {
         message: `This campaign exceeds the ${config.maximumRecipients}-recipient limit.`,
       })
     }
-    if (await campaignRateLimitExceeded(adminId, config)) {
-      return res.status(429).json({ success: false, message: 'Email campaign limit reached. Please try again later.' })
+    const rateLimit = await campaignRateLimitExceeded(
+      adminId,
+      config,
+      parsed.audience,
+      resolved.recipients.length,
+    )
+    if (rateLimit.exceeded) {
+      return res.status(429).json({ success: false, message: rateLimit.message })
     }
 
     const campaignData = {

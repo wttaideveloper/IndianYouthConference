@@ -49,6 +49,7 @@ const EMPTY_FILTERS: RegistrationFilters = {
   search: '',
   status: '',
   paymentStatus: '',
+  paymentOption: '',
   gender: '',
   occupation: '',
   programPreference: '',
@@ -67,7 +68,7 @@ function getInitials(name: string) {
 
 function activeFilterCount(filters: RegistrationFilters) {
   const keys: (keyof RegistrationFilters)[] = [
-    'status', 'paymentStatus', 'gender', 'occupation', 'programPreference',
+    'status', 'paymentStatus', 'paymentOption', 'gender', 'occupation', 'programPreference',
     'howDidYouKnow', 'pastAttendance', 'sectionConference', 'state', 'city', 'from', 'to', 'search',
   ]
   return keys.filter((k) => filters[k]).length
@@ -305,9 +306,22 @@ export default function AdminDashboard() {
                   onChange={(e) => updateFilter('paymentStatus', e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="">All</option>
-                  <option value="paid">Paid</option>
-                  <option value="not_paid">Not Paid</option>
+                  <option value="">All Payment Statuses</option>
+                  <option value="paid">Paid / Verified</option>
+                  <option value="payment_under_review">Payment Under Review</option>
+                  <option value="not_paid">Pending Payment</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">Payment Option</label>
+                <select
+                  value={filters.paymentOption || ''}
+                  onChange={(e) => updateFilter('paymentOption', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Payment Options</option>
+                  <option value="pay_later">Pay Later</option>
+                  <option value="pay_now">Pay Now</option>
                 </select>
               </div>
               <div>
@@ -448,7 +462,7 @@ export default function AdminDashboard() {
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ring-1 ${st.badge}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                          {paymentStatusLabel(item.status, hasScreenshot)}
+                          {paymentStatusLabel(item.status, hasScreenshot, item.paymentOption)}
                         </span>
                       </td>
                       <td className="px-5 py-4 hidden sm:table-cell text-xs text-gray-400">

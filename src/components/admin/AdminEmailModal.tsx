@@ -174,13 +174,21 @@ export default function AdminEmailModal({ isOpen, registrationId, registrations 
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [isOpen, onClose, sending])
 
+  const isDailyBulkQuotaExceeded = Boolean(
+    audience !== 'individual' &&
+    preview &&
+    preview.dailyBulkRemaining !== undefined &&
+    preview.recipientCount > preview.dailyBulkRemaining,
+  )
+
   const canContinue = Boolean(
     preview &&
     preview.recipientCount > 0 &&
     subject.trim() &&
     message.trim() &&
     !loadingPreview &&
-    !missingIndividualTarget,
+    !missingIndividualTarget &&
+    !isDailyBulkQuotaExceeded,
   )
 
   const handleContinue = () => {
@@ -323,8 +331,34 @@ export default function AdminEmailModal({ isOpen, registrationId, registrations 
                     <div className="flex items-center gap-2 text-navy"><Users size={17} className="text-primary" /><span className="text-sm font-semibold">Recipient preview</span></div>
                     {loadingPreview && <Loader2 size={16} className="animate-spin text-primary" />}
                   </div>
-                  {preview ? <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs"><div><p className="font-display text-xl font-bold text-navy">{preview.recipientCount}</p><p className="text-gray-400">Recipients</p></div><div><p className="font-display text-xl font-bold text-navy">{preview.skippedInvalidEmails}</p><p className="text-gray-400">Skipped invalid</p></div><div><p className="font-display text-xl font-bold text-navy">{preview.duplicateEmailsSkipped}</p><p className="text-gray-400">Duplicates skipped</p></div></div> : !loadingPreview && !missingIndividualTarget && <p className="mt-3 text-sm text-gray-500">Recipient preview unavailable.</p>}
+                  {preview ? (
+                    <>
+                      <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
+                        <div><p className="font-display text-xl font-bold text-navy">{preview.recipientCount}</p><p className="text-gray-400">Recipients</p></div>
+                        <div><p className="font-display text-xl font-bold text-navy">{preview.skippedInvalidEmails}</p><p className="text-gray-400">Skipped invalid</p></div>
+                        <div><p className="font-display text-xl font-bold text-navy">{preview.duplicateEmailsSkipped}</p><p className="text-gray-400">Duplicates skipped</p></div>
+                      </div>
+                      {audience !== 'individual' && preview.dailyBulkRemaining !== undefined && (
+                        <div className="mt-3 pt-3 border-t border-gray-200/70 flex items-center justify-between text-xs">
+                          <span className="text-gray-500 font-medium">Daily Bulk Quota</span>
+                          <span className={`font-semibold px-2 py-0.5 rounded-full ${
+                            preview.dailyBulkRemaining >= preview.recipientCount
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-red-50 text-red-700'
+                          }`}>
+                            {preview.dailyBulkRemaining.toLocaleString()} of {(preview.dailyBulkLimit ?? 1500).toLocaleString()} emails left today
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : !loadingPreview && !missingIndividualTarget && <p className="mt-3 text-sm text-gray-500">Recipient preview unavailable.</p>}
                 </div>
+
+                {isDailyBulkQuotaExceeded && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-relaxed">
+                    <strong>Daily bulk email quota limit:</strong> This campaign requires <strong>{preview?.recipientCount}</strong> emails, but only <strong>{preview?.dailyBulkRemaining}</strong> bulk emails remain in today&apos;s quota ({preview?.dailyBulkLimit ?? 1500} total/day). You can still send 1-to-1 individual emails, or wait for the 24-hour quota to reset.
+                  </div>
+                )}
 
                 <div>
                   <div className="mb-1.5 flex justify-between gap-3"><label htmlFor="admin-email-subject" className="text-xs font-semibold uppercase tracking-wider text-gray-400">Subject</label><span className="text-xs text-gray-400">{subject.length}/160</span></div>
