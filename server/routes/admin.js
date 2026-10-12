@@ -413,20 +413,56 @@ router.get('/stats', async (_req, res) => {
     return res.status(503).json({ success: false, message: 'Database not connected' })
   }
 
-  const [total, pending, verified, rejected, byOccupation] = await Promise.all([
-    Registration.countDocuments(),
-    Registration.countDocuments({ status: 'pending' }),
-    Registration.countDocuments({ status: 'verified' }),
-    Registration.countDocuments({ status: 'rejected' }),
+  const [attendeeStats, byOccupation] = await Promise.all([
+    Registration.aggregate([
+      {
+        $project: {
+          status: 1,
+          attendeeCount: {
+            $add: [
+              1,
+              {
+                $cond: [
+                  { $isArray: '$additionalAttendees' },
+                  { $size: '$additionalAttendees' },
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$status',
+          attendees: { $sum: '$attendeeCount' },
+          bookings: { $sum: 1 },
+        },
+      },
+    ]),
     Registration.aggregate([
       { $group: { _id: '$occupation', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
   ])
 
+  let total = 0
+  let pending = 0
+  let verified = 0
+  let rejected = 0
+  let totalBookings = 0
+
+  for (const item of attendeeStats) {
+    total += item.attendees
+    totalBookings += item.bookings
+    if (item._id === 'pending') pending = item.attendees
+    if (item._id === 'verified') verified = item.attendees
+    if (item._id === 'rejected') rejected = item.attendees
+  }
+
   res.json({
     success: true,
-    stats: { total, pending, verified, rejected, byOccupation },
+    stats: { total, pending, verified, rejected, totalBookings, byOccupation },
   })
 })
 

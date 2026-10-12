@@ -80,7 +80,7 @@ export default function AdminDashboard() {
   const [searchInput, setSearchInput] = useState('')
   const [items, setItems] = useState<Registration[]>([])
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
-  const [stats, setStats] = useState({ total: 0, pending: 0, verified: 0, rejected: 0 })
+  const [stats, setStats] = useState({ total: 0, pending: 0, verified: 0, rejected: 0, totalBookings: 0 })
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
             {viewer && <span className="text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1">View only</span>}
           </h1>
            <p className="text-gray-400 text-sm mt-1">
-             {stats.total} total · {stats.pending} awaiting payment review
+             {stats.total} total attendees{stats.totalBookings && stats.totalBookings !== stats.total ? ` (${stats.totalBookings} group/individual bookings)` : ''} · {stats.pending} awaiting payment review
            </p>
         </div>
         <div className="flex gap-2">
