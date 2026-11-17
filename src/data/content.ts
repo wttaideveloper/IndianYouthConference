@@ -67,8 +67,8 @@ export const FEATURES = [
   },
   {
     icon: '/images/icons/start1.png',
-    title: 'When It Started',
-    description: 'The first Indian Youth Conference started in 2015',
+    title: 'Why It Started',
+    description: 'IYC started with a vision to empower young people across India together, creating a platform to connect, learn, share experiences, develop leadership, and work together to make a positive difference in society.',
   },
 ]
 
@@ -191,10 +191,6 @@ export const COORDINATORS = [
 ]
 
 export const GALLERY_SECTIONS = [
-  {
-    title: 'IYC 2015 - YMCA Yelagiri',
-    images: ['a15', 'b15', 'c15', 'd15', 'e15', 'f15'].map((id) => `/images/gallery/${id}.jpg`),
-  },
   {
     title: 'IYC 2016 - Metas Adventist International School',
     images: ['a16', 'b16', 'c16', 'd16', 'e16', 'f16'].map((id) => `/images/gallery/${id}.jpg`),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Calendar, MapPin, Compass, Sparkles } from "lucide-react";
+import { Mail, Calendar, MapPin, Compass } from "lucide-react";
 import PageHero from "../components/PageHero";
 import SectionHeading from "../components/SectionHeading";
 import Button from "../components/Button";
@@ -106,7 +106,6 @@ export default function About() {
                   {[
                     { icon: Calendar, label: "Dates", value: EVENT.dates },
                     { icon: MapPin, label: "Venue", value: EVENT.mapTitle },
-                    { icon: Sparkles, label: "Since", value: "2015" },
                   ].map(({ icon: Icon, label, value }) => (
                     <div
                       key={label}
@@ -146,7 +145,7 @@ export default function About() {
               {[
                 {
                   title: "THE IYC ACTION PLAN!",
-                  text: "To organize regional and national conferences across different parts of India, bringing young people together to learn practical outreach methods, exchange experiences, develop leadership skills, and inspire one another. To coordinate community engagement and outreach initiatives that provide young people with hands-on experience in making a positive difference in society.",
+                  text: "To organize regional and national conferences across different parts of India, bringing young people together to learn, exchange experiences, develop leadership skills, and inspire one another. To coordinate community engagement and initiatives that provide young people with hands-on experience in making a positive difference in society.",
                 },
                 {
                   title: "WHAT IYC CARES FOR!",

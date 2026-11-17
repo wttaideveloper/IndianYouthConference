@@ -121,13 +121,13 @@ export default function Home() {
               <div className="inline-flex items-center gap-2 bg-primary/20 border border-primary/30 rounded-full px-4 py-1.5 mb-6">
                 <Star size={14} className="text-accent" />
                 <span className="text-accent text-sm font-semibold">
-                  Early Bird Registration Opening Soon
+                  Registration Closed
                 </span>
               </div>
               <p className="text-white/65 leading-relaxed mb-8 text-base">
                 Embark on a transformative journey combining insightful
                 discussions, networking opportunities, and a chance to be part
-                of a global youth community. IYC {EVENT.year} is just around the
+                of a Indian youth community. IYC {EVENT.year} is just around the
                 corner.
               </p>
               <Button to="/register" variant="secondary" size="lg">

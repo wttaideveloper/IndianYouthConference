@@ -11,6 +11,7 @@ interface ButtonProps {
   className?: string
   type?: 'button' | 'submit'
   size?: 'sm' | 'md' | 'lg'
+  disabled?: boolean
 }
 
 const variants: Record<ButtonVariant, string> = {
@@ -40,9 +41,10 @@ export default function Button({
   className = '',
   type = 'button',
   size = 'md',
+  disabled = false,
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
+    'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0 disabled:active:scale-100'
 
   const classes = `${base} ${sizes[size]} ${variants[variant]} ${className}`
 
@@ -63,7 +65,7 @@ export default function Button({
   }
 
   return (
-    <button type={type} onClick={onClick} className={classes}>
+    <button type={type} onClick={onClick} disabled={disabled} className={classes}>
       {children}
     </button>
   )

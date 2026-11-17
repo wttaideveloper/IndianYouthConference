@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { QrCode, Upload, X, ImageIcon, Building2, Info, AlertCircle, CreditCard, Clock } from 'lucide-react'
 import { DONATION } from '../data/content'
-import { PAYMENT_NOTE } from '../data/registration'
+import { PAYMENT_NOTE, REGISTRATION_OPEN } from '../data/registration'
+import RegistrationClosedNotice from './RegistrationClosedNotice'
 
 interface PaymentSectionProps {
   fee?: number
@@ -44,6 +45,8 @@ export default function PaymentSection({
     onScreenshotChange(null, null)
     if (inputRef.current) inputRef.current.value = ''
   }
+
+  if (!REGISTRATION_OPEN) return <RegistrationClosedNotice />
 
   return (
     <div className="space-y-5">

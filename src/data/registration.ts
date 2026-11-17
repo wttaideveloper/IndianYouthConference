@@ -65,6 +65,15 @@ export function calculateFee(
 export const PAYMENT_NOTE =
   'Registration Rs.1000 for Students. Rs.1350 for Working Professionals. Only over the Weekend Rs.500'
 
+// Temporarily hides every payment detail (QR code, bank/UPI details, fee note,
+// Pay Now / Pay Later and payment-proof upload) and shows a "registration is not
+// closed" notice instead. The registration form's Submit button is disabled too.
+// Set to true to show payment details and accept registrations again.
+export const REGISTRATION_OPEN = false
+export const REGISTRATION_CLOSED_TITLE = 'Registration Closed'
+export const REGISTRATION_CLOSED_MESSAGE =
+  'We are not accepting registrations or payments at the moment. For any questions, please email us.'
+
 export const MIN_AGE = 1
 export const MAX_AGE = 120
 

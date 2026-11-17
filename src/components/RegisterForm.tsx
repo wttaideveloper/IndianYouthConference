@@ -14,6 +14,9 @@ import {
   HOW_DID_YOU_KNOW,
   PAST_ATTENDANCE,
   calculateFee,
+  REGISTRATION_OPEN,
+  REGISTRATION_CLOSED_TITLE,
+  REGISTRATION_CLOSED_MESSAGE,
 } from '../data/registration'
 import {
   DEFAULT_COUNTRY_CALLING_CODE,
@@ -397,6 +400,11 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!REGISTRATION_OPEN) {
+      setStatus('error')
+      setMessage(`${REGISTRATION_CLOSED_TITLE}. ${REGISTRATION_CLOSED_MESSAGE}`)
+      return
+    }
     setErrors([])
     setMessage('')
     setScreenshotError('')
@@ -857,8 +865,10 @@ export default function RegisterForm() {
       )}
 
       {status !== 'success' && (
-        <Button type="submit" variant="primary" size="lg" className="w-full gap-2">
-          {status === 'loading' ? (
+        <Button type="submit" variant="primary" size="lg" className="w-full gap-2" disabled={!REGISTRATION_OPEN}>
+          {!REGISTRATION_OPEN ? (
+            <>Registration Closed</>
+          ) : status === 'loading' ? (
             <><Loader2 size={18} className="animate-spin" /> Submitting...</>
           ) : (
             <><Send size={18} /> Submit</>

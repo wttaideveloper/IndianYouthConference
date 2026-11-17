@@ -3,7 +3,7 @@ import { Mail, Shield, Zap, Calendar } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import RegisterForm from '../components/RegisterForm'
 import { EVENT } from '../data/content'
-import { REGISTRATION_FEES, PAYMENT_NOTE } from '../data/registration'
+import { REGISTRATION_FEES, PAYMENT_NOTE, REGISTRATION_OPEN } from '../data/registration'
 
 export default function Register() {
   return (
@@ -53,7 +53,9 @@ export default function Register() {
                     <span className="font-bold text-primary">₹{REGISTRATION_FEES.weekend}</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-4 leading-relaxed">{PAYMENT_NOTE}</p>
+                {REGISTRATION_OPEN && (
+                  <p className="text-xs text-gray-400 mt-4 leading-relaxed">{PAYMENT_NOTE}</p>
+                )}
               </motion.div>
 
               <motion.div
@@ -64,9 +66,13 @@ export default function Register() {
               >
                 {[
                   { icon: Calendar, text: 'Arrival & departure dates required' },
-                  { icon: Mail, text: 'Confirmation email after admin verifies payment' },
-                  { icon: Shield, text: 'QR payment + screenshot upload' },
-                  { icon: Zap, text: 'Payment verified within 48hrs' },
+                  ...(REGISTRATION_OPEN
+                    ? [
+                        { icon: Mail, text: 'Confirmation email after admin verifies payment' },
+                        { icon: Shield, text: 'QR payment + screenshot upload' },
+                        { icon: Zap, text: 'Payment verified within 48hrs' },
+                      ]
+                    : []),
                 ].map(({ icon: Icon, text }) => (
                   <div key={text} className="flex items-center gap-3 mb-3 last:mb-0">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
