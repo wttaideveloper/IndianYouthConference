@@ -42,26 +42,16 @@ const upload = multer({
 
 const router = Router()
 
-const OCCUPATIONS = ['Student', 'Pastor', 'Missionary Volunteer', 'Working', 'Dependent']
+const OCCUPATIONS = ['Student', 'Working']
 const GENDERS = ['Male', 'Female']
 const HOW_DID_YOU_KNOW = ['Facebook', 'WhatsApp', 'Instagram', 'Other']
 const PAST_ATTENDANCE = ['Yes', 'No']
 const PROGRAM_PREFERENCES = ['All the Days', 'Only Over the Weekend', '']
 
-const STANDARD_LABELS = {
-  Student: 'Student',
-  Pastor: 'Pastor',
-  'Missionary Volunteer': 'Missionary Volunteer',
-  Dependent: 'Dependent',
-}
-
 function calculateFee(occupation, programPreference) {
   if (programPreference === 'Only Over the Weekend') return { fee: 500, label: 'Weekend Only' }
   if (occupation === 'Working') return { fee: 1350, label: 'Working Professional' }
-  return {
-    fee: 1000,
-    label: STANDARD_LABELS[occupation] || 'Student / Pastor / Missionary Volunteer',
-  }
+  return { fee: 1000, label: 'Student' }
 }
 
 async function removeUploadedFile(file) {

@@ -260,7 +260,7 @@ export default function Home() {
       <section className="py-24 md:py-32 section-mesh">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading label="Indian Youth Conference" title="Registration Fees" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {PRICING_TIERS.map((tier, i) => (
               <motion.div
                 key={tier.title}

@@ -119,19 +119,6 @@ export const PRICING_TIERS = [
     highlighted: true,
   },
   {
-    title: 'Pastors & Missionary Volunteers',
-    price: 1000,
-    description: 'Pastors, church workers, and missionary volunteers',
-    features: [
-      { text: 'Complete programme access', included: true },
-      { text: 'Friday to Tuesday — full programme', included: true },
-      { text: 'Food', included: true },
-      { text: 'Accommodation', included: true },
-      { text: 'Transportation not included', included: false },
-    ],
-    highlighted: false,
-  },
-  {
     title: 'Weekend',
     price: 500,
     description: 'For those attending only on Sabbath',

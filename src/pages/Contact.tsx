@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Phone, Facebook, Youtube, Users, MapPin, Mail } from 'lucide-react'
+import { Phone, Facebook, Youtube, Users, Mail } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import SectionHeading from '../components/SectionHeading'
 import ContactForm from '../components/ContactForm'
@@ -26,21 +26,12 @@ export default function Contact() {
           >
             <span className="label-pill mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Registered Address
+              Contact
             </span>
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-tight text-navy">
               <span className="gradient-text">INDIAN YOUTH CONFERENCE (IYC.)</span>
             </h2>
-            <p className="mt-1 text-sm md:text-base text-gray-500">Educational Charitable Trust</p>
-            <p className="mt-2 text-xs md:text-sm text-gray-500">Registration Doc No - 73/IV/2024</p>
-            <div className="glass-card max-w-md mx-auto mt-6 rounded-2xl px-5 py-4 sm:px-6">
-              <MapPin size={20} className="mx-auto mb-2 text-primary" aria-hidden="true" />
-              <address className="not-italic text-sm md:text-base leading-relaxed text-gray-600">
-                <span className="block">Building No: 20/1416/1, Pax Street 1</span>
-                <span className="block">Nellikunnu, Thrissur, Kerala – 680005</span>
-              </address>
-            </div>
-            <div className="glass-card max-w-md mx-auto mt-4 rounded-2xl">
+            <div className="glass-card max-w-md mx-auto mt-6 rounded-2xl">
               <div className="flex flex-col sm:flex-row">
                 <a
                   href="mailto:indianyouthconference@gmail.com"

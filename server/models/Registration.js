@@ -6,7 +6,7 @@ const groupAttendeeSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   gender: { type: String, enum: ['Male', 'Female'], required: true },
   phone: { type: String, required: true },
-  occupation: { type: String, enum: ['Student', 'Pastor', 'Missionary Volunteer', 'Working', 'Dependent'], required: true },
+  occupation: { type: String, enum: ['Student', 'Working'], required: true },
   programPreference: { type: String, enum: ['All the Days', 'Only Over the Weekend'], default: 'All the Days' },
   fee: { type: Number, required: true },
   feeLabel: { type: String, required: true },
@@ -32,7 +32,7 @@ const registrationSchema = new mongoose.Schema(
     sectionConference: { type: String, required: true },
     occupation: {
       type: String,
-      enum: ['Student', 'Pastor', 'Missionary Volunteer', 'Working', 'Dependent'],
+      enum: ['Student', 'Working'],
       required: true,
     },
     arrivalDate: { type: String, required: true },

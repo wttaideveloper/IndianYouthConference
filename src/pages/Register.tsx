@@ -41,7 +41,7 @@ export default function Register() {
                 <h3 className="font-display font-bold text-navy mb-4">Registration Fees</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Students / Pastors / Missionary Volunteers</span>
+                    <span className="text-gray-600">Students</span>
                     <span className="font-bold text-primary">₹{REGISTRATION_FEES.standard}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">

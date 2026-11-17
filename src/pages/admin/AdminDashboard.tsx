@@ -280,7 +280,7 @@ export default function AdminDashboard() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Filter by</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { key: 'occupation' as const, label: 'Occupation', options: ['', 'Student', 'Pastor', 'Missionary Volunteer', 'Working', 'Dependent'] },
+                { key: 'occupation' as const, label: 'Occupation', options: ['', 'Student', 'Working'] },
                 { key: 'gender' as const, label: 'Gender', options: ['', 'Male', 'Female'] },
                 { key: 'programPreference' as const, label: 'Program', options: ['', 'All the Days', 'Only Over the Weekend'] },
                 { key: 'howDidYouKnow' as const, label: 'Referral Source', options: ['', 'Facebook', 'WhatsApp', 'Instagram', 'Other'] },

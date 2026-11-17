@@ -1,4 +1,4 @@
-export const OCCUPATIONS = ['Student', 'Pastor', 'Missionary Volunteer', 'Working', 'Dependent']
+export const OCCUPATIONS = ['Student', 'Working']
 export const GENDERS = ['Male', 'Female']
 export const HOW_DID_YOU_KNOW = ['Facebook', 'WhatsApp', 'Instagram', 'Other']
 export const PAST_ATTENDANCE = ['Yes', 'No']
@@ -6,20 +6,10 @@ export const PROGRAM_PREFERENCES = ['All the Days', 'Only Over the Weekend']
 export const STATUSES = ['pending', 'verified', 'rejected']
 const INTERNATIONAL_PHONE_PATTERN = /^\+[1-9]\d{7,14}$/
 
-const STANDARD_LABELS = {
-  Student: 'Student',
-  Pastor: 'Pastor',
-  'Missionary Volunteer': 'Missionary Volunteer',
-  Dependent: 'Dependent',
-}
-
 export function calculateFee(occupation, programPreference) {
   if (programPreference === 'Only Over the Weekend') return { fee: 500, label: 'Weekend Only' }
   if (occupation === 'Working') return { fee: 1350, label: 'Working Professional' }
-  return {
-    fee: 1000,
-    label: STANDARD_LABELS[occupation] || 'Student / Pastor / Missionary Volunteer',
-  }
+  return { fee: 1000, label: 'Student' }
 }
 
 function isValidPhoneNumber(value) {
