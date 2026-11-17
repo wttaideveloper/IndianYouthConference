@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, X, Users, Target, Heart, ArrowRight, Star, Clock } from 'lucide-react'
+import { Check, X, Users, Target, Heart, ArrowRight, Star, Clock, Mic } from 'lucide-react'
 import HeroSlider from '../components/HeroSlider'
 import Countdown from '../components/Countdown'
 import SectionHeading from '../components/SectionHeading'
@@ -16,6 +16,10 @@ import {
 
 const ICONS = [Users, Target, Heart]
 const ICON_COLORS = ['from-primary/20 to-primary/5', 'from-secondary/20 to-secondary/5', 'from-accent/20 to-accent/5']
+
+// Temporarily hides the "Donation & Payment QR" section on the home page.
+// Set to true to show it again — the section code below is untouched.
+const SHOW_DONATION_SECTION = false
 
 export default function Home() {
   const [activeDay, setActiveDay] = useState(0)
@@ -120,7 +124,7 @@ export default function Home() {
       <section className="py-24 md:py-32 section-mesh bg-white/50">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeading label="Who are Speaking" title="Presenters" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {SPEAKERS.map((speaker, i) => (
               <motion.div
                 key={speaker.name}
@@ -128,27 +132,17 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.5 }}
-                className="group"
+                className="group relative overflow-hidden rounded-3xl glass-card card-hover px-6 py-10 text-center"
               >
-                <div className="relative img-frame mb-4 aspect-[3/4] card-hover">
-                  <img
-                    src={speaker.image}
-                    alt={speaker.name}
-                    className="w-full h-full object-cover rounded-2xl"
-                    onError={(e) => {
-                      const el = e.target as HTMLImageElement
-                      el.src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><rect fill="%23e1137b15" width="200" height="280"/><text x="50%" y="50%" fill="%23060818" font-size="14" text-anchor="middle" dy=".3em" font-family="sans-serif">${speaker.name.split(' ')[0]}</text></svg>`)}`
-                    }}
-                  />
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-navy/90 via-navy/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-400 flex flex-col justify-end p-4">
-                    <span className="text-white font-semibold text-sm">{speaker.name}</span>
-                    <span className="text-white/50 text-xs">Presenter</span>
-                  </div>
-                  <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                    <Star size={14} className="text-primary fill-primary" />
-                  </div>
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary to-secondary opacity-60 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 blur-2xl opacity-50 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="relative mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-secondary/15 text-primary transition-all duration-300 group-hover:from-primary group-hover:to-secondary group-hover:text-white group-hover:shadow-lg group-hover:shadow-primary/25">
+                  <Mic size={20} strokeWidth={1.75} />
                 </div>
-                <h4 className="font-semibold text-navy text-sm text-center">{speaker.name}</h4>
+                <h4 className="relative font-display text-xl font-bold leading-snug text-navy md:text-2xl">
+                  {speaker.name}
+                </h4>
+                <div className="relative mx-auto mt-4 h-0.5 w-8 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-14" />
               </motion.div>
             ))}
           </div>
@@ -189,16 +183,8 @@ export default function Home() {
                 transition={{ delay: i * 0.06 }}
                 className="glass-card rounded-2xl p-4 flex items-center gap-4 card-hover"
               >
-                <div className="relative shrink-0">
-                  <img
-                    src={speaker.image}
-                    alt={speaker.name}
-                    className="w-14 h-14 rounded-xl object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                    <Clock size={10} className="text-navy" />
-                  </div>
+                <div className="shrink-0 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-secondary/15">
+                  <Clock size={20} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-primary font-semibold uppercase tracking-wider mb-0.5">TBA</p>
@@ -214,7 +200,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Donation & Payment QR */}
+      {/* Donation & Payment QR (hidden while SHOW_DONATION_SECTION is false) */}
+      {SHOW_DONATION_SECTION && (
       <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-primary" />
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
@@ -255,6 +242,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Pricing */}
       <section className="py-24 md:py-32 section-mesh">

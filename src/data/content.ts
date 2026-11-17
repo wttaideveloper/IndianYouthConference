@@ -49,7 +49,7 @@ export const FEATURES = [
   {
     icon: '/images/icons/who-we.png',
     title: 'Who We Are',
-    description: 'Indian Youth Conference is a self supported organization run by youngsters in India.',
+    description: 'Indian Youth Conference is an independent youth-led initiative run by young people in India.',
   },
   {
     icon: '/images/icons/aim.png',
@@ -69,11 +69,10 @@ export const FEATURES = [
 ]
 
 export const SPEAKERS = [
-  { name: 'Scotty Mayer', image: '/images/resource/scotty-mayer.jpg' },
-  { name: 'Praveen Singalla', image: '/images/resource/PRAVEEN SINGALLA.jpg' },
-  { name: 'Pr. Fine', image: '/images/resource/pr-fine.jpg' },
-  { name: 'Pr. Fabiano', image: '/images/resource/pr-fabiano.jpg' },
-  { name: 'Ronald Robin', image: '/images/resource/RONALD.jpg' },
+  { name: 'Scotty Mayer' },
+  { name: 'Praveen Singalla' },
+  { name: 'Fine' },
+  { name: 'Ronald Robin' },
 ]
 
 export const SCHEDULE_DAYS = [
@@ -161,7 +160,7 @@ export const FAQS = [
   },
   {
     question: 'Who is funding the IYC?',
-    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is a self supported organization run by youngsters in India. The purpose is to help the youth grow in Christ and take an active participation in the Lord\'s work. The church leadership at Southern Asia Division has been supportive of this work.',
+    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is an independent youth-led initiative run by young people in India. The purpose is to help the youth grow in Christ and take an active participation in the Lord\'s work. The church leadership at Southern Asia Division has been supportive of this work.',
   },
 ]
 
