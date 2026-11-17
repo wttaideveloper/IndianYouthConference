@@ -41,7 +41,6 @@ const contactDetails: PolicyContactDetail[] = [
     label: 'Address',
     value: 'Building No. 20/1416/1, Pax Street 1, Nellikunnu, Thrissur, Kerala - 680005, India',
   },
-  { label: 'Phone', value: '+91 7012963015', href: 'tel:+917012963015' },
   { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
 ]
 
@@ -904,7 +903,6 @@ export const POLICIES: Policy[] = [
             details: [
               { label: 'Website', value: 'www.indianyouthconference.com', href: 'https://www.indianyouthconference.com' },
               { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
-              { label: 'General Phone', value: '+91 7012963015', href: 'tel:+917012963015' },
               { label: 'Postal Address', value: 'Building No: 20/1416/1, Pax Street 1, Nellikunnu, Thrissur, Kerala - 680005, India' },
             ],
           },
@@ -916,15 +914,15 @@ export const POLICIES: Policy[] = [
           {
             type: 'table',
             label: 'Grievance redressal contacts',
-            headers: ['Name', 'Contact Number'],
+            headers: ['Name', 'Email'],
             rows: [
               [
                 { text: 'Mr. Ronald Stephen' },
-                { text: '+91 99017 98901', href: 'tel:+919901798901', ariaLabel: 'Call Mr. Ronald Stephen at +91 99017 98901' },
+                { text: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com', ariaLabel: 'Email Mr. Ronald Stephen at indianyouthconference@gmail.com' },
               ],
               [
                 { text: 'Dr. Hyacinth Austin' },
-                { text: '+91 97915 08601', href: 'tel:+919791508601', ariaLabel: 'Call Dr. Hyacinth Austin at +91 97915 08601' },
+                { text: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com', ariaLabel: 'Email Dr. Hyacinth Austin at indianyouthconference@gmail.com' },
               ],
             ],
           },
@@ -1049,7 +1047,6 @@ export const POLICIES: Policy[] = [
               { label: 'Authorised Representative Name', value: 'Elvin Baby John' },
               { label: 'Designation', value: 'President' },
               { label: 'Key Managerial Person / Authorised Representative', value: 'Elvin Baby John, President' },
-              { label: 'Mobile', value: '+91 7012963015', href: 'tel:+917012963015' },
               { label: 'Email', value: 'elvinbabyjohn@gmail.com', href: 'mailto:elvinbabyjohn@gmail.com' },
             ],
           },
@@ -1061,7 +1058,6 @@ export const POLICIES: Policy[] = [
           {
             type: 'details',
             details: [
-              { label: 'Phone', value: '+91 7012963015', href: 'tel:+917012963015' },
               { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
             ],
           },
@@ -1077,8 +1073,6 @@ export const POLICIES: Policy[] = [
           {
             type: 'details',
             details: [
-              { label: 'Mr. Ronald Stephen', value: '+91 99017 98901', href: 'tel:+919901798901' },
-              { label: 'Dr. Hyacinth Austin', value: '+91 97915 08601', href: 'tel:+919791508601' },
               { label: 'Email', value: 'indianyouthconference@gmail.com', href: 'mailto:indianyouthconference@gmail.com' },
             ],
           },

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, Phone, Calendar, MapPin, Compass } from 'lucide-react'
+import { Mail, Calendar, MapPin, Compass } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import SectionHeading from '../components/SectionHeading'
 import Button from '../components/Button'
@@ -160,16 +160,6 @@ export default function About() {
                     <p className="text-navy font-semibold mb-5">{EVENT.venue}</p>
                     <h5 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Contact</h5>
                     <ul className="space-y-3">
-                      <li className="flex items-center gap-3 text-gray-600 text-sm">
-                        <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center"><Phone size={14} className="text-primary" /></div>
-                        Martin Mundu
-                      </li>
-                      <li>
-                        <a href={`tel:${EVENT.contactSupportPhone}`} className="flex items-center gap-3 text-gray-600 hover:text-primary text-sm transition-colors">
-                          <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center"><Phone size={14} className="text-primary" /></div>
-                          {EVENT.contactSupportPhone}
-                        </a>
-                      </li>
                       <li>
                         <a href={`mailto:${EVENT.email}`} className="flex items-center gap-3 text-gray-600 hover:text-primary text-sm transition-colors">
                           <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center"><Mail size={14} className="text-primary" /></div>

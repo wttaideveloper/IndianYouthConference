@@ -8,16 +8,9 @@ export const EVENT = {
   venue: 'Mount Zion Campus, Lena Vilakku, Pilivalam P.O, Thirumayam Tk, Pudukkottai, Tamil Nadu 622507',
   countdownDate: new Date('2026-10-16T00:00:00'),
   email: 'indianyouthconference@gmail.com',
-  supportPhone: '+91 8123941065',
-  contactSupportPhone: '+91 86304 45075',
   mapLat: 10.2972,
   mapLng: 78.7519,
   mapTitle: 'Mount Zion Campus, Pudukkottai',
-}
-
-export const SOCIAL = {
-  facebook: 'https://www.facebook.com/Indian-Youth-Conference-IYC-1655147474733017',
-  youtube: 'https://www.youtube.com/channel/UClhCBeLzPRr0Qgo4YNGVALg',
 }
 
 export const NAV_LINKS = [
@@ -56,7 +49,7 @@ export const FEATURES = [
   {
     icon: '/images/icons/who-we.png',
     title: 'Who We Are',
-    description: 'Indian Youth Conference is a self supported ministry run by Adventist youngsters in India.',
+    description: 'Indian Youth Conference is a self supported organization run by youngsters in India.',
   },
   {
     icon: '/images/icons/aim.png',
@@ -168,37 +161,37 @@ export const FAQS = [
   },
   {
     question: 'Who is funding the IYC?',
-    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is a self supported ministry run by Adventist youngsters in India. The purpose is to help the youth grow in Christ and take an active participation in the Lord\'s work. The church leadership at Southern Asia Division has been supportive of this work.',
+    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is a self supported organization run by youngsters in India. The purpose is to help the youth grow in Christ and take an active participation in the Lord\'s work. The church leadership at Southern Asia Division has been supportive of this work.',
   },
 ]
 
 export const COORDINATORS = [
-  { name: 'Baphylla Sajan Lyngdoh', role: 'Working Committee', phone: '+91 8123941065' },
-  { name: 'Elvin Baby John', role: 'Working Committee', phone: '+91 9895387922' },
-  { name: 'Austin Navis', role: 'Working Committee', phone: '+91 9823606401' },
-  { name: 'Dawn Fernandez', role: 'Working Committee', phone: '' },
-  { name: 'Naveen Kumar', role: 'Working Committee', phone: '+91 9418724828' },
-  { name: 'Praneeth Kumar', role: 'Working Committee', phone: '+91 9618040752' },
-  { name: 'Jacob Kunthara', role: 'Working Committee', phone: '+91 9809619514' },
-  { name: 'Hamedon Kyrshan Nongkhlaw', role: 'Working Committee', phone: '+91 8257830018' },
-  { name: 'Lavanya Kumar', role: 'Working Committee', phone: '+91 9582260980' },
-  { name: 'Raja Thangamuthu', role: 'Working Committee', phone: '+91 8879005569' },
-  { name: 'Leonard D G', role: 'Working Committee', phone: '+91 9663148491' },
-  { name: 'Ronald Stephen', role: 'Working Committee', phone: '+91 9901798901' },
-  { name: 'Deric Sherwin Baby', role: 'Working Committee', phone: '+91 7795353400' },
-  { name: 'Akash PT', role: 'Working Committee', phone: '+91 8078311542' },
-  { name: 'Christina Ann Abraham', role: 'Working Committee', phone: '+91 7349698545' },
-  { name: 'Diya Ruth Varghese', role: 'Working Committee', phone: '+91 7259643871' },
-  { name: 'Adia Praveen', role: 'Working Committee', phone: '+91 9845875103' },
-  { name: 'Utkarsha Kamble', role: 'Working Committee', phone: '+91 7066716346' },
-  { name: 'Mark Nathaniel Shankar', role: 'Working Committee', phone: '+91 8104074376' },
-  { name: 'Harishar', role: 'Working Committee', phone: '+91 6360847800' },
-  { name: 'Hyacinth Austin', role: 'Working Committee', phone: '+91 9791508601' },
-  { name: 'Jesson Patrick', role: 'Working Committee', phone: '+91 7092433847' },
-  { name: 'Martin Mundu', role: 'Working Committee', phone: '+91 8630445075' },
-  { name: 'Pearly', role: 'Working Committee', phone: '+91 9241801226' },
-  { name: 'Santhiel Pradhan', role: 'Working Committee', phone: '+91 9101486360' },
-  { name: 'Sowmya Evangelin', role: 'Working Committee', phone: '+91 8122637615' },
+  { name: 'Baphylla Sajan Lyngdoh', role: 'Working Committee' },
+  { name: 'Elvin Baby John', role: 'Working Committee' },
+  { name: 'Austin Navis', role: 'Working Committee' },
+  { name: 'Dawn Fernandez', role: 'Working Committee' },
+  { name: 'Naveen Kumar', role: 'Working Committee' },
+  { name: 'Praneeth Kumar', role: 'Working Committee' },
+  { name: 'Jacob Kunthara', role: 'Working Committee' },
+  { name: 'Hamedon Kyrshan Nongkhlaw', role: 'Working Committee' },
+  { name: 'Lavanya Kumar', role: 'Working Committee' },
+  { name: 'Raja Thangamuthu', role: 'Working Committee' },
+  { name: 'Leonard D G', role: 'Working Committee' },
+  { name: 'Ronald Stephen', role: 'Working Committee' },
+  { name: 'Deric Sherwin Baby', role: 'Working Committee' },
+  { name: 'Akash PT', role: 'Working Committee' },
+  { name: 'Christina Ann Abraham', role: 'Working Committee' },
+  { name: 'Diya Ruth Varghese', role: 'Working Committee' },
+  { name: 'Adia Praveen', role: 'Working Committee' },
+  { name: 'Utkarsha Kamble', role: 'Working Committee' },
+  { name: 'Mark Nathaniel Shankar', role: 'Working Committee' },
+  { name: 'Harishar', role: 'Working Committee' },
+  { name: 'Hyacinth Austin', role: 'Working Committee' },
+  { name: 'Jesson Patrick', role: 'Working Committee' },
+  { name: 'Martin Mundu', role: 'Working Committee' },
+  { name: 'Pearly', role: 'Working Committee' },
+  { name: 'Santhiel Pradhan', role: 'Working Committee' },
+  { name: 'Sowmya Evangelin', role: 'Working Committee' },
 ]
 
 export const GALLERY_SECTIONS = [

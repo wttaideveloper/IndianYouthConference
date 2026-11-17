@@ -120,7 +120,7 @@ function formatAttendeeEventDetails(event) {
       <p style="margin:0 0 6px;"><strong style="color:#0b0e37;">${escapeHtml(event.name)}</strong></p>
       <p style="margin:0 0 6px;"><strong>Dates:</strong> ${escapeHtml(event.dates)}</p>
       <p style="margin:0 0 6px;"><strong>Venue:</strong> ${escapeHtml(event.venue)}<br>${escapeHtml(event.address)}</p>
-      <p style="margin:0;"><strong>Contact:</strong> <a href="mailto:${escapeHtml(event.contactEmail)}" style="color:#e1137b;">${escapeHtml(event.contactEmail)}</a> &middot; ${escapeHtml(event.contactPhone)}</p>
+      <p style="margin:0;"><strong>Contact:</strong> <a href="mailto:${escapeHtml(event.contactEmail)}" style="color:#e1137b;">${escapeHtml(event.contactEmail)}</a></p>
       ${travelBox}
     </div>
   `
@@ -257,8 +257,7 @@ function formatVerifiedHtml(data) {
         ${travelBox}
         <p style="color:#4a5568;line-height:1.6;">
           For questions, reach us at
-          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>
-          or call <strong>${escapeHtml(event.contactPhone)}</strong>.
+          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>.
         </p>
         <p style="color:#4a5568;margin-top:24px;">We look forward to seeing you!<br><strong>IYC Team</strong></p>
       </div>
@@ -286,8 +285,7 @@ function formatRejectedHtml(data) {
         ${notes}
         <p style="color:#4a5568;line-height:1.6;">
           Please contact us at
-          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>
-          or call <strong>+91 8123941065</strong> so we can help resolve this.
+          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a> so we can help resolve this.
         </p>
         <p style="color:#4a5568;margin-top:24px;">God bless,<br><strong>IYC Team</strong></p>
       </div>
@@ -485,8 +483,7 @@ function formatOtpHtml(otp, { fullName, expiresAt }) {
         </p>
         <p style="color:#4a5568;margin-top:24px;line-height:1.6;">
           Questions? Contact us at
-          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>
-          or call <strong>+91 8123941065</strong>.
+          <a href="mailto:${CONTACT_EMAIL}" style="color:#e1137b;">${CONTACT_EMAIL}</a>.
         </p>
       </div>
     </div>

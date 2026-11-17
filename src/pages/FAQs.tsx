@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Phone, Facebook, Youtube, HelpCircle } from 'lucide-react'
+import { ChevronDown, Mail, HelpCircle } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import SectionHeading from '../components/SectionHeading'
 import ContactForm from '../components/ContactForm'
-import { FAQS, EVENT, SOCIAL } from '../data/content'
+import { FAQS, EVENT } from '../data/content'
 
 export default function FAQs() {
   const [openIndex, setOpenIndex] = useState<number | null>(0)
@@ -82,41 +82,18 @@ export default function FAQs() {
                 <ContactForm showSubject={false} submitLabel="Send Question" />
               </div>
 
-              <div className="glass-card rounded-3xl p-6">
-                <h3 className="font-display font-bold text-navy mb-4">Follow Us</h3>
-                <div className="space-y-3">
-                  {[
-                    { href: SOCIAL.facebook, icon: Facebook, label: 'Facebook' },
-                    { href: SOCIAL.youtube, icon: Youtube, label: 'YouTube' },
-                  ].map(({ href, icon: Icon, label }) => (
-                    <a
-                      key={label}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/5 text-gray-600 hover:text-primary transition-all group"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-primary/8 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                        <Icon size={16} />
-                      </div>
-                      {label}
-                    </a>
-                  ))}
-                </div>
-              </div>
-
               <div className="rounded-3xl p-6 bg-gradient-to-br from-primary via-primary-dark to-secondary text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <h3 className="font-display font-bold mb-3 relative">Call for Support</h3>
+                <h3 className="font-display font-bold mb-3 relative">Email for Support</h3>
                 <p className="text-white/75 text-sm mb-5 relative">
                   Our team is here to assist you with any questions.
                 </p>
                 <a
-                  href={`tel:${EVENT.supportPhone.replace(/\s/g, '')}`}
-                  className="flex items-center gap-2 font-semibold hover:underline relative"
+                  href={`mailto:${EVENT.email}`}
+                  className="flex items-center gap-2 font-semibold hover:underline relative min-w-0"
                 >
-                  <Phone size={16} />
-                  {EVENT.supportPhone}
+                  <Mail size={16} className="shrink-0" />
+                  <span className="break-all">{EVENT.email}</span>
                 </a>
               </div>
             </div>
