@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import About from './pages/About'
@@ -11,6 +11,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLayout from './components/admin/AdminLayout'
 import PolicyPage from './components/PolicyPage'
 import { POLICIES } from './data/policies'
+import { SHOW_GALLERY } from './data/content'
 
 export default function App() {
   return (
@@ -19,7 +20,10 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/faqs" element={<FAQs />} />
-        <Route path="/gallery" element={<Gallery />} />
+        <Route
+          path="/gallery"
+          element={SHOW_GALLERY ? <Gallery /> : <Navigate to="/" replace />}
+        />
         <Route path="/contact" element={<Contact />} />
         <Route path="/register" element={<Register />} />
         {POLICIES.map((policy) => (

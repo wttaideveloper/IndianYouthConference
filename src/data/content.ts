@@ -13,11 +13,15 @@ export const EVENT = {
   mapTitle: 'Mount Zion Campus, Pudukkottai',
 }
 
+// Temporarily hides the Gallery page everywhere (header, mobile menu, footer links)
+// and redirects /gallery to the home page. Set to true to show it again.
+export const SHOW_GALLERY = false
+
 export const NAV_LINKS = [
   { label: 'Home', path: '/' },
   { label: 'About', path: '/about' },
   { label: 'FAQs', path: '/faqs' },
-  { label: 'Gallery', path: '/gallery' },
+  ...(SHOW_GALLERY ? [{ label: 'Gallery', path: '/gallery' }] : []),
   { label: 'Contact', path: '/contact' },
 ]
 
@@ -139,8 +143,8 @@ export const DONATION = {
 
 export const FAQS = [
   {
-    question: 'Who should attend the Conference?',
-    answer: 'Young people who have a burden for lost souls and those who are seeking to have a deeper relationship with the LORD. People who have a desire to work for the LORD will find this meeting a place where they will learn new skills and ways of reaching out to others.',
+    question: 'Who Should Attend the Conference?',
+    answer: 'Young people who are passionate about making a difference in the lives of others, seeking personal growth, and building meaningful connections. Those who wish to develop their skills, explore opportunities to serve their communities, and learn new ways of reaching out and creating a positive impact will find this conference an inspiring and enriching experience.',
   },
   {
     question: 'Is there an age limit?',
@@ -151,17 +155,10 @@ export const FAQS = [
     answer: 'We do not have any special arrangement for the kids. The parents are responsible for their own kids. If you require a guest room, you should inform us beforehand. The registration fees do not cover for the guest room expenses. The expenses of the guest room will have to be borne separately. Please contact us if you need guest rooms, as they need to be booked much earlier.',
   },
   {
-    question: 'I cannot come for the whole meeting. Can I come on Saturday?',
-    answer: 'If you are not able to join us for the whole meeting from Wednesday to Sunday, you are welcome to join us on Saturday. If you are planning to come on Saturday morning and leave by Saturday evening, you do not have to register. You can put us a word in advance and simply drop in. If you plan to come on Friday and stay overnight, you will have to register for the meetings, as we will have to arrange for your stay. People can also join us for the outreach program on Sunday.',
+    question: 'I cannot attend the entire conference. Can I join for the weekend?',
+    answer: 'If you are unable to attend the full conference from Wednesday to Sunday, you are welcome to join us for the weekend.\n\nIf you plan to attend only on Saturday and leave by Saturday evening, registration is not required. However, we would appreciate it if you could inform us in advance.\n\nIf you plan to arrive on Friday and stay overnight, registration is required so that we can make the necessary accommodation arrangements.',
   },
-  {
-    question: 'Is this supported by the Seventh-Day Adventist Church?',
-    answer: 'The meetings are arranged by young Adventist people for the Youth of the Seventh-Day Adventist Church. The church leaders are well informed and they are supportive of the meetings. IYC respects the Church Leadership and seeks to uphold the principles and doctrines of the Seventh-Day Adventist Church.',
-  },
-  {
-    question: 'Who is funding the IYC?',
-    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is an independent youth-led initiative run by young people in India. Our aim is to empower young people to grow personally, develop leadership skills, discover their potential, and actively contribute to their communities and society. The church leadership at Southern Asia Division has been supportive of this work.',
-  },
+  
 ]
 
 export const COORDINATORS = [

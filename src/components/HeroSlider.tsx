@@ -172,9 +172,7 @@ export default function HeroSlider() {
               {[
                 EVENT.dates,
                 EVENT.venue,
-                'Sealed For A Purpose',
                 'Register Now — Limited Seats',
-                EVENT.tagline,
               ].map((text) => (
                 <span key={`${gi}-${text}`} className="text-white/40 text-xs font-medium tracking-widest uppercase flex items-center gap-12">
                   {text}

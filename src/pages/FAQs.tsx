@@ -65,7 +65,7 @@ export default function FAQs() {
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <div className="px-5 pb-5 pl-16 text-gray-500 text-sm leading-relaxed border-t border-gray-100/80 pt-4">
+                          <div className="px-5 pb-5 pl-16 text-gray-500 text-sm leading-relaxed whitespace-pre-line border-t border-gray-100/80 pt-4">
                             {faq.answer}
                           </div>
                         </motion.div>
