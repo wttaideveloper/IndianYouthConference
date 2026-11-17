@@ -54,12 +54,12 @@ export const FEATURES = [
   {
     icon: '/images/icons/aim.png',
     title: 'Aim',
-    description: 'The purpose is to help the youth grow in Christ and take an active participation in the Lord\'s work.',
+    description: 'Our aim is to empower young people to grow personally, develop leadership skills, discover their potential, and actively contribute to their communities and society.',
   },
   {
     icon: '/images/icons/dream.png',
     title: 'Our Dream',
-    description: 'To see young people in active ministry for Jesus and to have a deeper experience in the LORD.',
+    description: 'To inspire a generation of young people to make a meaningful difference in the world, live with purpose, and grow through deeper life experiences.',
   },
   {
     icon: '/images/icons/start1.png',
@@ -87,7 +87,7 @@ export const PRICING_TIERS = [
   {
     title: 'Students',
     price: 1000,
-    description: 'School, college, and missionary training students',
+    description: 'School and college students',
     features: [
       { text: 'Complete programme access', included: true },
       { text: 'Friday to Tuesday — full programme', included: true },
@@ -113,9 +113,9 @@ export const PRICING_TIERS = [
   {
     title: 'Weekend',
     price: 500,
-    description: 'For those attending only on Sabbath',
+    description: 'For those attending only on Saturday',
     features: [
-      { text: 'Sabbath programme access', included: true },
+      { text: 'Saturday programme access', included: true },
       { text: 'Food', included: true },
       { text: 'Accommodation', included: false },
       { text: 'Transportation not included', included: false },
@@ -151,8 +151,8 @@ export const FAQS = [
     answer: 'We do not have any special arrangement for the kids. The parents are responsible for their own kids. If you require a guest room, you should inform us beforehand. The registration fees do not cover for the guest room expenses. The expenses of the guest room will have to be borne separately. Please contact us if you need guest rooms, as they need to be booked much earlier.',
   },
   {
-    question: 'I cannot come for the whole meeting. Can I come on Sabbath?',
-    answer: 'If you are not able to join us for the whole meeting from Wednesday to Sunday, you are welcome to join us on Sabbath. If you are planning to come on Sabbath morning and leave by Sabbath evening, you do not have to register. You can put us a word in advance and simply drop in. If you plan to come on Friday and stay overnight, you will have to register for the meetings, as we will have to arrange for your stay. People can also join us for the outreach program on Sunday.',
+    question: 'I cannot come for the whole meeting. Can I come on Saturday?',
+    answer: 'If you are not able to join us for the whole meeting from Wednesday to Sunday, you are welcome to join us on Saturday. If you are planning to come on Saturday morning and leave by Saturday evening, you do not have to register. You can put us a word in advance and simply drop in. If you plan to come on Friday and stay overnight, you will have to register for the meetings, as we will have to arrange for your stay. People can also join us for the outreach program on Sunday.',
   },
   {
     question: 'Is this supported by the Seventh-Day Adventist Church?',
@@ -160,7 +160,7 @@ export const FAQS = [
   },
   {
     question: 'Who is funding the IYC?',
-    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is an independent youth-led initiative run by young people in India. The purpose is to help the youth grow in Christ and take an active participation in the Lord\'s work. The church leadership at Southern Asia Division has been supportive of this work.',
+    answer: 'Being a youth led movement, IYC is dependent on contributions from people who are willing to empower young people to do the Lord\'s Work. Indian Youth Conference is an independent youth-led initiative run by young people in India. Our aim is to empower young people to grow personally, develop leadership skills, discover their potential, and actively contribute to their communities and society. The church leadership at Southern Asia Division has been supportive of this work.',
   },
 ]
 
