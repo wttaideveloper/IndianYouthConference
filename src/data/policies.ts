@@ -297,7 +297,16 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '4. Consent and Lawful Use',
+        heading: '4. Use and Retention of Personal Information',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: "The personal information collected through the online registration process will be used solely for purposes related to the organization, administration, and conduct of the Indian Youth Conference (IYC). We will not use or share registrants' personal information for any unrelated, future, or promotional purposes. All personal information collected through registration will be securely deleted after the conclusion of the conference, except where retention is required by applicable law or necessary to resolve pending matters.",
+          },
+        ],
+      },
+      {
+        heading: '5. Consent and Lawful Use',
         blocks: [
           {
             type: 'paragraph',
@@ -306,7 +315,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '5. Children and Guardian Consent',
+        heading: '6. Children and Guardian Consent',
         blocks: [
           {
             type: 'paragraph',
@@ -315,7 +324,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '6. Sharing of Information',
+        heading: '7. Sharing of Information',
         blocks: [
           {
             type: 'paragraph',
@@ -324,7 +333,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '7. International or Remote Processing',
+        heading: '8. International or Remote Processing',
         blocks: [
           {
             type: 'paragraph',
@@ -333,7 +342,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '8. Retention',
+        heading: '9. Retention',
         blocks: [
           {
             type: 'paragraph',
@@ -342,7 +351,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '9. Security',
+        heading: '10. Security',
         blocks: [
           {
             type: 'paragraph',
@@ -351,7 +360,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '10. Your Choices and Rights',
+        heading: '11. Your Choices and Rights',
         blocks: [
           {
             type: 'list',
@@ -369,7 +378,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '11. Cookies and Analytics',
+        heading: '12. Cookies and Analytics',
         blocks: [
           {
             type: 'paragraph',
@@ -379,7 +388,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '12. Data Breach and Complaints',
+        heading: '13. Data Breach and Complaints',
         blocks: [
           {
             type: 'paragraph',
@@ -388,7 +397,7 @@ export const POLICIES: Policy[] = [
         ],
       },
       {
-        heading: '13. Changes to This Policy',
+        heading: '14. Changes to This Policy',
         blocks: [
           {
             type: 'paragraph',
